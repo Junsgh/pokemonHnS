@@ -1459,6 +1459,88 @@ static void NamingScreen_CreateRivalIcon(void)
 }
 
 //--------------------------------------------------
+// Shiny Star Sprite Management
+//--------------------------------------------------
+
+static bool8 ShouldShowShinyIndicator(void)
+{
+    // Only show for caught mon or nickname screens
+    if (sNamingScreen->templateNum != NAMING_SCREEN_CAUGHT_MON
+        && sNamingScreen->templateNum != NAMING_SCREEN_NICKNAME)
+        return FALSE;
+
+    // Need personality to check
+    if (sNamingScreen->monPersonality == 0)
+        return FALSE;
+
+    // Check if shiny using player's OT ID and mon's personality
+    u32 otId = (u32)gSaveBlock2Ptr->playerTrainerId[1] << 16
+             | (u32)gSaveBlock2Ptr->playerTrainerId[0];
+
+    return IsShinyOtIdPersonality(otId, sNamingScreen->monPersonality);
+}
+
+static void CreateShinyStarSprite(void)
+{
+    struct SpriteSheet sheet;
+    struct SpritePalette pal;
+    u8 spriteId;
+    void *gfxBuffer;
+
+    if (sNamingScreen->shinyStarSprite != NULL)
+        return;
+
+    // Allocate buffer and decompress graphics (like summary screen does)
+    gfxBuffer = AllocZeroed(0x20 * 2);  // 8x8 tile = 32 bytes, allocate 64 to be safe
+    if (gfxBuffer == NULL)
+        return;
+
+    LZ77UnCompWram(sShinyStarTiles, gfxBuffer);
+
+    // Load sprite sheet and palette
+    sheet.data = gfxBuffer;
+    sheet.size = 0x20 * 2;
+    sheet.tag = GFXTAG_SHINY_STAR;
+
+    pal.data = sShinyStarPal;
+    pal.tag = PALTAG_SHINY_STAR;
+
+    LoadSpriteSheet(&sheet);
+    LoadSpritePalette(&pal);
+
+    // Free the decompression buffer
+    Free(gfxBuffer);
+
+    // Create sprite near the mon icon
+    // Mon icon is at (56, 40), place star to the bottom-right
+    spriteId = CreateSprite(&sSpriteTemplate_ShinyStarIcon, 180, 58, 0);
+    sNamingScreen->shinyStarSprite = &gSprites[spriteId];
+    sNamingScreen->shinyStarSprite->oam.priority = 2;
+
+    // Start hidden, will be shown if mon is shiny
+    sNamingScreen->shinyStarSprite->invisible = TRUE;
+}
+
+static void UpdateShinyStarVisibility(void)
+{
+    if (sNamingScreen->shinyStarSprite == NULL)
+        return;
+
+    sNamingScreen->shinyStarSprite->invisible = !ShouldShowShinyIndicator();
+}
+
+static void DestroyShinyStarSprite(void)
+{
+    if (sNamingScreen->shinyStarSprite != NULL)
+    {
+        DestroySprite(sNamingScreen->shinyStarSprite);
+        FreeSpriteTilesByTag(GFXTAG_SHINY_STAR);
+        FreeSpritePaletteByTag(PALTAG_SHINY_STAR);
+        sNamingScreen->shinyStarSprite = NULL;
+    }
+}
+
+//--------------------------------------------------
 // Keyboard handling
 //--------------------------------------------------
 
