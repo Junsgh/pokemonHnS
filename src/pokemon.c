@@ -4924,6 +4924,7 @@ void CreateBoxMon(struct BoxPokemon *boxMon, u16 species, u8 level, u8 fixedIV, 
     u32 value;
     u16 checksum;
     u32 shinyValue;
+    u32 shinyChance = SHINY_ODDS * (1 << gSaveBlock1Ptr->tx_Features_ShinyChance);
 
     ZeroBoxMonData(boxMon);
 
@@ -4938,43 +4939,19 @@ void CreateBoxMon(struct BoxPokemon *boxMon, u16 species, u8 level, u8 fixedIV, 
     if (otIdType == OT_ID_RANDOM_NO_SHINY)
     {
         u32 shinyValue;
-        if (FlagGet(FLAG_NO_SHINY) == TRUE) // No shiny
+        if (FlagGet(FLAG_NO_SHINY) == TRUE) // FLAG_NO_SHINY simply prevents the created mon from being shiny
+        {
+            value = Random32();
+        }
+        else // Otherwise, choose random OT IDs until one results in a non-shiny Pokémon
+        {
+            // See "IsShinyOtIdPersonality" for explanation of this logic
             do
             {
                 value = Random32();
                 shinyValue = GET_SHINY_VALUE(value, personality);
-            } while (shinyValue = 0);
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 0) // 1/8192
-            do
-            {
-                // Choose random OT IDs until one that results in a non-shiny Pokémon
-                value = Random32();
-                shinyValue = GET_SHINY_VALUE(value, personality);
-            } while (shinyValue < SHINY_ODDS);
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 1) // 1/4096
-            do
-            {
-                value = Random32();
-                shinyValue = GET_SHINY_VALUE(value, personality);
-            } while (shinyValue < 16);
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 2) // 1/2048
-            do
-            {
-                value = Random32();
-                shinyValue = GET_SHINY_VALUE(value, personality);
-            } while (shinyValue < 32);
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 3) // 1/1024
-            do
-            {
-                value = Random32();
-                shinyValue = GET_SHINY_VALUE(value, personality);
-            } while (shinyValue < 64);
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 4) // 1/512
-            do
-            {
-                value = Random32();
-                shinyValue = GET_SHINY_VALUE(value, personality);
-            } while (shinyValue < 128);
+            } while (shinyValue < shinyChance);
+        }
     }
     else if (otIdType == OT_ID_PRESET)
     {
@@ -4995,7 +4972,7 @@ void CreateBoxMon(struct BoxPokemon *boxMon, u16 species, u8 level, u8 fixedIV, 
             u8 nature = personality % NUM_NATURES;  // keep current nature
             do {
                 personality = Random32();
-                personality = ((((Random() % SHINY_ODDS) ^ (HIHALF(value) ^ LOHALF(value))) ^ LOHALF(personality)) << 16) | LOHALF(personality);
+                personality = ((((Random() % shinyChance) ^ (HIHALF(value) ^ LOHALF(value))) ^ LOHALF(personality)) << 16) | LOHALF(personality);
             } while (nature != GetNatureFromPersonality(personality));
         }
     }
@@ -10725,205 +10702,51 @@ const u32 *GetMonFrontSpritePal(struct Pokemon *mon)
 
 const u32 *GetMonSpritePalFromSpeciesAndPersonality(u16 species, u32 otId, u32 personality)
 {
-    u32 shinyValue;
-    struct Pokemon *mon;
-
     if (species > NUM_SPECIES)
         return gMonPaletteTable[SPECIES_NONE].data;
 
-    shinyValue = GET_SHINY_VALUE(otId, personality);
-
-    if (gSaveBlock1Ptr->tx_Features_ShinyChance == 0) // 1/8192
+    // not sure why the personality cannot be 0 if ShinyChance is not 0
+    if (IsShinyOtIdPersonality(otId, personality) && (gSaveBlock1Ptr->tx_Features_ShinyChance == 0 || personality != 0))
     {
-        if (shinyValue < SHINY_ODDS)
+        if ((gSaveBlock1Ptr->tx_Features_ShinyColors == 1) &&
+            (species == SPECIES_PIKACHU
+            || species == SPECIES_RAICHU
+            || species == SPECIES_PICHU
+            || species == SPECIES_VAPOREON
+            || species == SPECIES_JOLTEON
+            || species == SPECIES_FLAREON
+            || species == SPECIES_REGICE
+            || species == SPECIES_HERACROSS
+            || species == SPECIES_HAUNTER
+            || species == SPECIES_GENGAR
+            || species == SPECIES_SCYTHER
+            || species == SPECIES_BLAZIKEN
+            || species == SPECIES_XATU
+            || species == SPECIES_PARAS
+            || species == SPECIES_CHINCHOU
+            || species == SPECIES_LANTURN
+            || species == SPECIES_ZAPDOS
+            || species == SPECIES_ELEKID
+            || species == SPECIES_FARFETCHD
+            || species == SPECIES_MAROWAK
+            || species == SPECIES_PHANPY
+            || species == SPECIES_LAPRAS
+            || species == SPECIES_TENTACOOL
+            || species == SPECIES_TENTACRUEL))
         {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return gMonShinyPaletteTable_Modern[species].data;
-            else
-                return gMonShinyPaletteTable[species].data;
+            return gMonShinyPaletteTable_Modern[species].data;
         }
         else
         {
-            return gMonPaletteTable[species].data;
+            return gMonShinyPaletteTable[species].data;
         }
     }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 1) // 1/4096
+    else
     {
-        if (shinyValue < 16 && personality !=0)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return gMonShinyPaletteTable_Modern[species].data;
-            else
-                return gMonShinyPaletteTable[species].data;
-        }
-        else
-        {
-            return gMonPaletteTable[species].data;
-        }
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 2) // 1/2048
-    {
-        if (shinyValue < 32 && personality !=0)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return gMonShinyPaletteTable_Modern[species].data;
-            else
-                return gMonShinyPaletteTable[species].data;
-        }
-        else
-        {
-            return gMonPaletteTable[species].data;
-        }
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 3) // 1/1024
-    {
-        if (shinyValue < 64 && personality !=0)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return gMonShinyPaletteTable_Modern[species].data;
-            else
-                return gMonShinyPaletteTable[species].data;
-        }
-        else
-        {
-            return gMonPaletteTable[species].data;
-        }
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 4) // 1/512
-    {
-        if (shinyValue < 128 && personality !=0)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return gMonShinyPaletteTable_Modern[species].data;
-            else
-                return gMonShinyPaletteTable[species].data;
-        }
-        else
-        {
-            return gMonPaletteTable[species].data;
-        }
+        return gMonPaletteTable[species].data;
     }
 }
+
 const struct CompressedSpritePalette *GetMonSpritePalStruct(struct Pokemon *mon)
 {
     u16 species = GetMonData(mon, MON_DATA_SPECIES_OR_EGG, 0);
@@ -10934,200 +10757,41 @@ const struct CompressedSpritePalette *GetMonSpritePalStruct(struct Pokemon *mon)
 
 const struct CompressedSpritePalette *GetMonSpritePalStructFromOtIdPersonality(u16 species, u32 otId , u32 personality)
 {
-    u32 shinyValue;
-
-    shinyValue = GET_SHINY_VALUE(otId, personality);
-
-    if (gSaveBlock1Ptr->tx_Features_ShinyChance == 0) // 1/8192
+    if (IsShinyOtIdPersonality(otId, personality))
     {
-        if (shinyValue < SHINY_ODDS)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return &gMonShinyPaletteTable_Modern[species];
-            else
-                return &gMonShinyPaletteTable[species];
-        }
+        if ((gSaveBlock1Ptr->tx_Features_ShinyColors == 1) &&
+            (species == SPECIES_PIKACHU
+            || species == SPECIES_RAICHU
+            || species == SPECIES_PICHU
+            || species == SPECIES_VAPOREON
+            || species == SPECIES_JOLTEON
+            || species == SPECIES_FLAREON
+            || species == SPECIES_REGICE
+            || species == SPECIES_HERACROSS
+            || species == SPECIES_HAUNTER
+            || species == SPECIES_GENGAR
+            || species == SPECIES_SCYTHER
+            || species == SPECIES_BLAZIKEN
+            || species == SPECIES_XATU
+            || species == SPECIES_PARAS
+            || species == SPECIES_CHINCHOU
+            || species == SPECIES_LANTURN
+            || species == SPECIES_ZAPDOS
+            || species == SPECIES_ELEKID
+            || species == SPECIES_FARFETCHD
+            || species == SPECIES_MAROWAK
+            || species == SPECIES_PHANPY
+            || species == SPECIES_LAPRAS
+            || species == SPECIES_TENTACOOL
+            || species == SPECIES_TENTACRUEL))
+            return &gMonShinyPaletteTable_Modern[species];
         else
-        {
-            return &gMonPaletteTable[species];
-        }
+            return &gMonShinyPaletteTable[species];
     }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 1) // 1/4096
+    else
     {
-        if (shinyValue < 16)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return &gMonShinyPaletteTable_Modern[species];
-            else
-                return &gMonShinyPaletteTable[species];
-        }
-        else
-        {
-            return &gMonPaletteTable[species];
-        }
+        return &gMonPaletteTable[species];
     }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 2) // 1/2048
-    {
-        if (shinyValue < 32)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return &gMonShinyPaletteTable_Modern[species];
-            else
-                return &gMonShinyPaletteTable[species];
-        }
-        else
-        {
-            return &gMonPaletteTable[species];
-        }
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 3) // 1/1024
-    {
-        if (shinyValue < 64)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return &gMonShinyPaletteTable_Modern[species];
-            else
-                return &gMonShinyPaletteTable[species];
-        }
-        else
-        {
-            return &gMonPaletteTable[species];
-        }
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 4) // 1/512
-    {
-        if (shinyValue < 128)
-        {
-            if ((species == SPECIES_PIKACHU
-                || species == SPECIES_RAICHU
-                || species == SPECIES_PICHU
-                || species == SPECIES_VAPOREON
-                || species == SPECIES_JOLTEON
-                || species == SPECIES_FLAREON
-                || species == SPECIES_REGICE
-                || species == SPECIES_HERACROSS
-                || species == SPECIES_HAUNTER
-                || species == SPECIES_GENGAR
-                || species == SPECIES_SCYTHER
-                || species == SPECIES_BLAZIKEN
-                || species == SPECIES_XATU
-                || species == SPECIES_PARAS
-                || species == SPECIES_CHINCHOU
-                || species == SPECIES_LANTURN
-                || species == SPECIES_ZAPDOS
-                || species == SPECIES_ELEKID
-                || species == SPECIES_FARFETCHD
-                || species == SPECIES_MAROWAK
-                || species == SPECIES_PHANPY
-                || species == SPECIES_LAPRAS
-                || species == SPECIES_TENTACOOL
-                || species == SPECIES_TENTACRUEL)
-                && (gSaveBlock1Ptr->tx_Features_ShinyColors == 1))
-                return &gMonShinyPaletteTable_Modern[species];
-            else
-                return &gMonShinyPaletteTable[species];
-        }
-        else
-        {
-            return &gMonPaletteTable[species];
-        }
-    }      
 }
 
 bool32 IsHMMove2(u16 move)
@@ -11298,39 +10962,17 @@ bool8 IsMonShiny(struct Pokemon *mon)
 
 bool8 IsShinyOtIdPersonality(u32 otId, u32 personality)
 {
-    bool8 retVal = FALSE;
+    // SHINY_ODDS is doubled for each incrementing value of tx_Features_ShinyChance
+    // "1 << x" is equivalent to "pow(2, x)"
+    u32 shinyChance = SHINY_ODDS * (1 << gSaveBlock1Ptr->tx_Features_ShinyChance);
     u32 shinyValue = GET_SHINY_VALUE(otId, personality);
 
-    if (gSaveBlock1Ptr->tx_Features_ShinyChance == 0) // 1/8192
-    {
-        if (shinyValue < SHINY_ODDS)
-            retVal = TRUE;
-        return retVal;
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 1) // 1/4096
-    {
-        if (shinyValue < 16)
-            retVal = TRUE;
-        return retVal;
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 2) // 1/2048
-    {
-        if (shinyValue < 32)
-            retVal = TRUE;
-        return retVal;
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 3) // 1/1024
-    {
-        if (shinyValue < 64)
-            retVal = TRUE;
-        return retVal;
-    }
-    else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 4) // 1/512
-    {
-        if (shinyValue < 128)
-            retVal = TRUE;
-        return retVal;
-    }
+    // shinyValue can be any number between 0 and 65535
+    // shinyChance can be 8, 16, 32, 64, or 128
+    //  ("8 * pow(2, x)"" where x can be 0, 1, 2, 3, or 4)
+    // as such, the effective shiny rate is equal to shinyChance / 65536
+    // this can be 1/8192, 1/4096, 1/2048, 1/1024, or 1/512
+    return (shinyValue < shinyChance);
 }
 
 const u8 *GetTrainerPartnerName(void)

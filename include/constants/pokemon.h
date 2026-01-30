@@ -93,7 +93,15 @@
 #define MAX_STAT_STAGE    12
 
 // Shiny odds
-#define SHINY_ODDS 8 // Actual probability is SHINY_ODDS/65536
+#define SHINY_ODDS 8 // Actual shiny rate is (SHINY_ODDS * pow(2, gSaveBlock1Ptr->tx_Features_ShinyChance)) / 65536
+/*
+Assuming SHINY_ODDS = 8:
+tx_Features_ShinyChance = 0     ->  shiny rate 1/8192
+tx_Features_ShinyChance = 1     ->  shiny rate 1/4096
+tx_Features_ShinyChance = 2     ->  shiny rate 1/2048
+tx_Features_ShinyChance = 3     ->  shiny rate 1/1024
+tx_Features_ShinyChance = 4     ->  shiny rate 1/512
+*/
 
 // Ribbon IDs used by TV and Pokénav
 #define CHAMPION_RIBBON       0

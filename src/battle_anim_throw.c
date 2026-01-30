@@ -2352,47 +2352,14 @@ void AnimTask_SetTargetToEffectBattler(u8 taskId)
 
 void TryShinyAnimation(u8 battler, struct Pokemon *mon)
 {
-    bool8 isShiny;
     u32 otId, personality;
-    u32 shinyValue;
     u8 taskCirc, taskDgnl;
 
-    isShiny = FALSE;
     gBattleSpritesDataPtr->healthBoxesData[battler].triedShinyMonAnim = TRUE;
-    otId = GetMonData(mon, MON_DATA_OT_ID);
-    personality = GetMonData(mon, MON_DATA_PERSONALITY);
 
     if (IsBattlerSpriteVisible(battler))
     {
-        shinyValue = GET_SHINY_VALUE(otId, personality);
-
-        if (gSaveBlock1Ptr->tx_Features_ShinyChance == 0) // 1/8192
-        {
-            if (shinyValue < SHINY_ODDS)
-                isShiny = TRUE;
-        }
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 1) // 1/4096
-        {
-            if (shinyValue < 16)
-                isShiny = TRUE;
-        }
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 2) // 1/2048
-        {
-            if (shinyValue < 32)
-                isShiny = TRUE;
-        }
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 3) // 1/1024
-        {
-            if (shinyValue < 64)
-                isShiny = TRUE;
-        }
-        else if (gSaveBlock1Ptr->tx_Features_ShinyChance == 4) // 1/512
-        {
-            if (shinyValue < 128)
-                isShiny = TRUE;
-        }
-        
-        if (isShiny)
+        if (IsMonShiny(mon))
         {
             if (GetSpriteTileStartByTag(ANIM_TAG_GOLD_STARS) == 0xFFFF)
             {
