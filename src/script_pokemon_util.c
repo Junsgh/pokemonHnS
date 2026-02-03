@@ -70,65 +70,47 @@ u8 ScriptGiveMon(u16 species, u8 level, u16 item, u32 unused1, u32 unused2, u8 u
     u8 heldItem[2];
     struct Pokemon mon;
 
-    // Starter flags are numbers because Random starters also work!
-    // The flag FORCE_SHINY is immediately cleared so it can't affect the rest of the game.
-    // Starter flags are not used anymore after that, and it's immediately cleared as well.
-    if (FlagGet(FLAG_SHINY_STARTER_1)) //Torchic
-        {
-            FlagSet(FLAG_FORCE_SHINY);
-            CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
-            FlagClear(FLAG_FORCE_SHINY);
-            FlagClear(FLAG_SHINY_STARTER_1);
-        }
-    else if (FlagGet(FLAG_SHINY_STARTER_2)) //Treecko
-        {
-            FlagSet(FLAG_FORCE_SHINY);
-            CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
-            FlagClear(FLAG_FORCE_SHINY);
-            FlagClear(FLAG_SHINY_STARTER_2);
-        }
-    else if (FlagGet(FLAG_SHINY_STARTER_3)) //Mudkip
-        {
-            FlagSet(FLAG_FORCE_SHINY);
-            CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
-            FlagClear(FLAG_FORCE_SHINY);
-            FlagClear(FLAG_SHINY_STARTER_3);
-        }
-    else if ((!FlagGet(FLAG_SHINY_STARTER_3) || !FlagGet(FLAG_SHINY_STARTER_2) || !FlagGet(FLAG_SHINY_STARTER_1)) 
-            && !FlagGet(FLAG_HIDE_SILVER_NEWBARKTOWN))
-    // This is here because even if the starter doesn't pass the previous checks (so, it's not shiny) there's the 1/8192 (or 1/4096, 1/2048, 1/1024, 1/512, depending on 
-    // the player's choice) chance that it could become shiny anyway, as the preview is not connected to the personality that the game creates.
-    // To prevent it, if the SHINY_STARTER_X flag hasn't been set, and "Silver is still looking at Elm's lab" flag hasn't been also set, it just blocks the starter from becoming
-    // shiny. The flag NO_SHINY is immediately cleared to prevent other POKéMON from becoming not shiny.
-    {
-        FlagSet(FLAG_NO_SHINY);
-        CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
-        FlagClear(FLAG_NO_SHINY);
-    }
+    #ifndef NDEBUG
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** ScriptGiveMon %d ********", FlagGet(FLAG_SHINY_STARTER_1));
+    #endif
 
-    // Special case added to HnS, as it doesn't handle starters the same way as Emerald does (via Birch's bag)
-    // The flag used is the one that enables the "POKéMON" option in the menu system
-    // So, this is only run once: when you haven't got the "POKéMON" option yet, and when RANDOM STARTER and ONE TYPE CHALLENGE are enabled.
-    // That's why it's set after obtaining the starter. Afterwards, it never works again as the flag never gets disabled, as it should.
-    // All the shiny code above doesn't affect HnS, but it's set anyway in case someone uses the code
-    if (((gSaveBlock1Ptr->tx_Random_Starter) == 1) && (FlagGet(FLAG_SYS_POKEMON_GET) == FALSE) ||
-        IsOneTypeChallengeActive() && (FlagGet(FLAG_SYS_POKEMON_GET) == FALSE))
+    if (!FlagGet(FLAG_SYS_POKEMON_GET))
     {
-        species = GetStarterPokemon(VarGet(VAR_STARTER_MON));
-        //Fixes Missigno appearing in Monotype Dragon runs, as the game lacks Dragon species
-        if (IsOneTypeChallengeActive() && (gSaveBlock1Ptr->tx_Challenges_OneTypeChallenge == TYPE_DRAGON) && (species == 0))
-            CreateMon(&mon, SPECIES_DRATINI, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
+        u8 starter = VarGet(VAR_STARTER_MON);
+        if ((starter == 0 && FlagGet(FLAG_SHINY_STARTER_1))
+            || (starter == 1 && FlagGet(FLAG_SHINY_STARTER_2))
+            || (starter == 2 && FlagGet(FLAG_SHINY_STARTER_3)))
+        {
+            // if the selected starter is shiny in the preview, force the given mon to also be shiny
+            FlagSet(FLAG_FORCE_SHINY);
+        }
         else
-            CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
+        {
+            // if the selected starter is *not* shiny in the preview, force the given mon to not by shiny
+            FlagSet(FLAG_NO_SHINY);
+        }
+
+        // Special case added to HnS, as it doesn't handle starters the same way as Emerald does (via Birch's bag)
+        // The flag used is the one that enables the "POKéMON" option in the menu system
+        // So, this is only run once: when you haven't got the "POKéMON" option yet, and when RANDOM STARTER and ONE TYPE CHALLENGE are enabled.
+        // That's why it's set after obtaining the starter. Afterwards, it never works again as the flag never gets disabled, as it should.
+        // All the shiny code above doesn't affect HnS, but it's set anyway in case someone uses the code
+        if (((gSaveBlock1Ptr->tx_Random_Starter) == 1) || IsOneTypeChallengeActive())
+        {
+            species = GetStarterPokemon(starter);
+            //Fixes Missigno appearing in Monotype Dragon runs, as the game lacks Dragon species
+            if (IsOneTypeChallengeActive() && (gSaveBlock1Ptr->tx_Challenges_OneTypeChallenge == TYPE_DRAGON) && (species == 0))
+                species = SPECIES_DRATINI;
+        }
     }
-     //If the static randomizer is on, and you got your first Pokémon already, givemons will be randomized
-    else if ((gSaveBlock1Ptr->tx_Random_Static) && (FlagGet(FLAG_SYS_POKEMON_GET) == TRUE))
+    else if (gSaveBlock1Ptr->tx_Random_Static)
     {
+        // If the static randomizer is on, and you got your first Pokémon already, givemons will be randomized
         species = GetSpeciesRandomSeeded(species, TX_RANDOM_T_STATIC, 0);
-        CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
     }
-    else
-        CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
+    
+    CreateMon(&mon, species, level, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
+
     heldItem[0] = item;
     heldItem[1] = item >> 8;
     SetMonData(&mon, MON_DATA_HELD_ITEM, heldItem);
@@ -144,6 +126,13 @@ u8 ScriptGiveMon(u16 species, u8 level, u16 item, u32 unused1, u32 unused2, u8 u
         GetSetPokedexFlag(nationalDexNum, FLAG_SET_CAUGHT);
         break;
     }
+
+    FlagClear(FLAG_FORCE_SHINY);
+    FlagClear(FLAG_NO_SHINY);
+    FlagClear(FLAG_SHINY_STARTER_1);
+    FlagClear(FLAG_SHINY_STARTER_2);
+    FlagClear(FLAG_SHINY_STARTER_3);
+
     return sentToPc;
 }
 

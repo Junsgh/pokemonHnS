@@ -1648,20 +1648,60 @@ bool8 ScrCmd_showmonpic(struct ScriptContext *ctx)
     u8 x = ScriptReadByte(ctx);
     u8 y = ScriptReadByte(ctx);
 
-    // Needed for starter randomization
-    if (((gSaveBlock1Ptr->tx_Random_Starter) == 1) && (FlagGet(FLAG_SYS_POKEMON_GET) == FALSE) ||
-        IsOneTypeChallengeActive() && (FlagGet(FLAG_SYS_POKEMON_GET) == FALSE))
+    bool8 shinyStarter = FALSE;
+    
+    // If we have not gotten a pokemon yet, assume this is starter preview
+    if (!FlagGet(FLAG_SYS_POKEMON_GET))
     {
-        // copies random starter species into VAR_TEMP_2
-        species = GetStarterPokemon(VarGet(VAR_STARTER_MON));
-        if (IsOneTypeChallengeActive() && (gSaveBlock1Ptr->tx_Challenges_OneTypeChallenge == TYPE_DRAGON) && (species == 0))
-            VarSet(VAR_TEMP_2, SPECIES_DRATINI);
-        else
+        u32 shinyChance = SHINY_ODDS << gSaveBlock1Ptr->tx_Features_ShinyChance;
+        u8 starter = VarGet(VAR_STARTER_MON);
+
+        u32 flagTemp;
+        u32 flagShinyStarter;
+
+        // determine the relevant flags for the starter being previewed
+        if (starter == 0)
+        {
+            flagTemp = FLAG_TEMP_1;
+            flagShinyStarter = FLAG_SHINY_STARTER_1;
+        }
+        else if (starter == 1)
+        {
+            flagTemp = FLAG_TEMP_2;
+            flagShinyStarter = FLAG_SHINY_STARTER_2;
+        }
+        else if (starter == 2)
+        {
+            flagTemp = FLAG_TEMP_3;
+            flagShinyStarter = FLAG_SHINY_STARTER_3;
+        }
+
+        // if FLAG_TEMP_X not set for this starter preview, roll for shininess,
+        // then set FLAG_TEMP_X to prevent re-rolls
+        if (!FlagGet(flagTemp))
+        {
+            if ((Random32() % 65536) < shinyChance)
+                FlagSet(flagShinyStarter);
+
+            FlagSet(flagTemp);
+        }
+
+        shinyStarter = FlagGet(flagShinyStarter);
+
+        // Needed for starter randomization
+        if (((gSaveBlock1Ptr->tx_Random_Starter) == 1) || IsOneTypeChallengeActive())
+        {
+            // copies random starter species into VAR_TEMP_2
+            species = GetStarterPokemon(VarGet(VAR_STARTER_MON));
+            if (IsOneTypeChallengeActive() && (gSaveBlock1Ptr->tx_Challenges_OneTypeChallenge == TYPE_DRAGON) && (species == 0))
+                species = SPECIES_DRATINI;
+            
             VarSet(VAR_TEMP_2, species);
+        }
     }
 
-    if (IsOneTypeChallengeActive() && (gSaveBlock1Ptr->tx_Challenges_OneTypeChallenge == TYPE_DRAGON) && (species == 0))
-        ScriptMenu_ShowPokemonPic(SPECIES_DRATINI, x, y);
+    if (shinyStarter)
+        ScriptMenu_ShowShinyPokemonPic(species, x, y);
     else
         ScriptMenu_ShowPokemonPic(species, x, y);
     

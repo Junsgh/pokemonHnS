@@ -2874,26 +2874,17 @@ static void DrawChoices_Features_ShinyChance(int selection, int y)
     bool8 active = CheckConditions(MENUITEM_FEATURES_SHINY_CHANCE);
     DrawChoices_Options_Five(sText_Challenges_ShinyChance_Strings, selection, y, active);
     
-    if (selection == 0)
-    {
-        gSaveBlock1Ptr->tx_Features_ShinyChance = 0; // 1/8192
-    }
-    else if (selection == 1)
-    {
-        gSaveBlock1Ptr->tx_Features_ShinyChance = 1; // 1/4096 -> Gen VI
-    }
-    else if (selection == 2)
-    {
-        gSaveBlock1Ptr->tx_Features_ShinyChance = 2; // 1/2048
-    }
-    else if (selection == 3)
-    {
-        gSaveBlock1Ptr->tx_Features_ShinyChance = 3; // 1/1024
-    }
-    else //(selection == 4)
-    {
-        gSaveBlock1Ptr->tx_Features_ShinyChance = 4; // 1/512
-    }
+    // "tx_Features_ShinyChance" is the power of 2 to multiply the #define SHINY_ODDS by to determine shiny rate
+    // the resulting value (of "SHINY_ODDS * pow(2, tx_Features_ShinyChance)) is the chance out of 65536
+    // 
+    // This means that a value of 0 results in a shiny rate of 1/8192 (the Gen III shiny rate),
+    // a value of 1 results in a shiny rate of 1/4096 (the Gen Gen VI+ shiny rate),
+    // and increasing values increase the shiny rate to 1/2048, 1/1024, 1/512, etc.
+    const u32 maxShinyChance = 4;
+    if (selection >= maxShinyChance)
+        gSaveBlock1Ptr->tx_Features_ShinyChance = maxShinyChance;
+    else
+        gSaveBlock1Ptr->tx_Features_ShinyChance = selection;
 }
 
 /*static void DrawChoices_Features_Unlimited_WT(int selection, int y)

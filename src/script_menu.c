@@ -988,6 +988,31 @@ bool8 ScriptMenu_ShowPokemonPic(u16 species, u8 x, u8 y)
     }
 }
 
+bool8 ScriptMenu_ShowShinyPokemonPic(u16 species, u8 x, u8 y)
+{
+    u8 taskId;
+    u8 spriteId;
+
+    if (FindTaskIdByFunc(Task_PokemonPicWindow) != TASK_NONE)
+    {
+        return FALSE;
+    }
+    else
+    {
+        spriteId = CreateShinyMonSprite_PicBox(species, x * 8 + 40, y * 8 + 40, 0);
+        taskId = CreateTask(Task_PokemonPicWindow, 0x50);
+        gTasks[taskId].tWindowId = CreateWindowFromRect(x, y, 8, 8);
+        gTasks[taskId].tState = 0;
+        gTasks[taskId].tMonSpecies = species;
+        gTasks[taskId].tMonSpriteId = spriteId;
+        gSprites[spriteId].callback = SpriteCallbackDummy;
+        gSprites[spriteId].oam.priority = 0;
+        SetStandardWindowBorderStyle(gTasks[taskId].tWindowId, TRUE);
+        ScheduleBgCopyTilemapToVram(0);
+        return TRUE;
+    }
+}
+
 bool8 (*ScriptMenu_HidePokemonPic(void))(void)
 {
     u8 taskId = FindTaskIdByFunc(Task_PokemonPicWindow);
