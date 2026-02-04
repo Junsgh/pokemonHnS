@@ -4046,11 +4046,15 @@ static void Cmd_getexp(void)
                     PREPARE_STRING_BUFFER(gBattleTextBuff2, i);
                     PREPARE_WORD_NUMBER_BUFFER(gBattleTextBuff3, 5, gBattleMoveDamage);
 
-                    // Only Print this Mon's Exp gained if participated or has held item
+                    // Only Print this Mon's Exp gained if participated, has exp-boosting held item, or gets traded boost
                     if (!FlagGet(FLAG_EXP_SHARE)
                         || (holdEffect == HOLD_EFFECT_EXP_SHARE)
                         || (holdEffect == HOLD_EFFECT_LUCKY_EGG)
-                        || (gBattleStruct->sentInPokes & 1))
+                        || (gBattleStruct->sentInPokes & 1)
+                        || (
+                            IsTradedMon(&gPlayerParty[gBattleStruct->expGetterMonId])
+                            && !(gBattleTypeFlags & BATTLE_TYPE_INGAME_PARTNER && gBattleStruct->expGetterMonId >= 3)
+                            && (gSaveBlock2Ptr->optionsDifficulty != 2)))
                     {
                         #ifndef NDEBUG
                         MgbaPrintf(MGBA_LOG_DEBUG, "******** Cmd_getexp Battler %d ********", gBattleStruct->expGetterBattlerId);
@@ -4157,12 +4161,50 @@ static void Cmd_getexp(void)
             {
                 if (FlagGet(FLAG_EXP_SHARE))
                 {
-                    // Ensure the true, effective, Exp All yield is reported
-                    if (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
-                        gExpShareExp = (gExpShareExp * 150) / 100;
-                    
-                    PREPARE_WORD_NUMBER_BUFFER(gBattleTextBuff3, 5, gExpShareExp);
-                    PrepareStringBattle(STRINGID_PKMNGAINEDEXPALL, gBattleStruct->expGetterBattlerId);
+                    s32 totalMon = 0;
+                    s32 uniqueYield = 0;
+                    sentIn = gSentPokesToOpponent[(gBattlerFainted & 2) >> 1];
+
+                    // Check if at least one mon only received exp from Exp All
+                    for (i = 0; i < PARTY_SIZE; i++)
+                    {
+                        if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE
+                            || GetMonData(&gPlayerParty[i], MON_DATA_IS_EGG)
+                            || GetMonData(&gPlayerParty[i], MON_DATA_HP) == 0
+                            || (GetMonData(&gPlayerParty[i], MON_DATA_LEVEL) >= GetCurrentPartyLevelCap())) // Gained no exp
+                            continue;
+
+                        totalMon++;
+
+                        item = GetMonData(&gPlayerParty[i], MON_DATA_HELD_ITEM);
+
+                        if (item == ITEM_ENIGMA_BERRY)
+                            holdEffect = gSaveBlock1Ptr->enigmaBerry.holdEffect;
+                        else
+                            holdEffect = ItemId_GetHoldEffect(item);
+
+                        if ((holdEffect == HOLD_EFFECT_EXP_SHARE)   // Exp All yield doubled
+                        || (holdEffect == HOLD_EFFECT_LUCKY_EGG)    // Exp All yield x1.5
+                        || (gBitTable[i] & sentIn)                  // Participated
+                        || (
+                            IsTradedMon(&gPlayerParty[i])           // Exp All yield x1.5
+                            && !(gBattleTypeFlags & BATTLE_TYPE_INGAME_PARTNER && i >= 3)
+                            && (gSaveBlock2Ptr->optionsDifficulty != 2)))
+                        {
+                            uniqueYield++;
+                        }
+                    }
+
+                    // only print Exp All message if at least one Mon only received exp from Exp All
+                    if (uniqueYield < totalMon)
+                    {
+                        // Ensure the true, effective, Exp All yield is reported
+                        if (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
+                            gExpShareExp = (gExpShareExp * 150) / 100;
+                        
+                        PREPARE_WORD_NUMBER_BUFFER(gBattleTextBuff3, 5, gExpShareExp);
+                        PrepareStringBattle(STRINGID_PKMNGAINEDEXPALL, gBattleStruct->expGetterBattlerId);
+                    }
                 }
 
                 gBattleScripting.getexpState = 6; // we're done
