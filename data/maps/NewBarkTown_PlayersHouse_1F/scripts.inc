@@ -159,7 +159,6 @@ NewBarkTown_PlayersHouse_1F_EventScript_MomsIntroTrigger2::
 	goto NewBarkTown_PlayersHouse_1F_EventScript_MomsIntro
 	end
 
-
 NewBarkTown_PlayersHouse_1F_EventScript_MomsIntro::
 	playse SE_PIN
 	applymovement LOCALID_MOM, Common_Movement_ExclamationMark
@@ -180,8 +179,6 @@ NewBarkTown_PlayersHouse_1F_EventScript_MomsIntro::
 
 	releaseall
 	end
-
-
 
 NewBarkTown_PlayersHouse_1F_EventScript_GivePokeGear::
 	playfanfare MUS_OBTAIN_ITEM
