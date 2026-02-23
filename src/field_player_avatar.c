@@ -41,7 +41,7 @@ EWRAM_DATA struct PlayerAvatar gPlayerAvatar = {};
 
 // static declarations
 
-static u8 ObjectEventCB2_NoMovement2();
+static bool8 ObjectEventCB2_NoMovement2(struct ObjectEvent *, struct Sprite *);
 static bool8 TryInterruptObjectEventSpecialAnim(struct ObjectEvent *, u8);
 static void npc_clear_strange_bits(struct ObjectEvent *);
 static void MovePlayerAvatarUsingKeypadInput(u8, u16, u16);
@@ -327,9 +327,9 @@ void MovementType_Player(struct Sprite *sprite)
     UpdateObjectEventCurrentMovement(&gObjectEvents[sprite->data[0]], sprite, ObjectEventCB2_NoMovement2);
 }
 
-static u8 ObjectEventCB2_NoMovement2(void)
+static bool8 ObjectEventCB2_NoMovement2(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {
-    return 0;
+    return FALSE;
 }
 
 void PlayerStep(u8 direction, u16 newKeys, u16 heldKeys)

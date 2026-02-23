@@ -566,7 +566,7 @@ static u16 STWI_init(u8 request)
         // Can't send if clock slave
         gSTWIStatus->error = ERR_REQ_CMD_CLOCK_SLAVE;
         if (gSTWIStatus->callbackM != NULL)
-            gSTWIStatus->callbackM(request, gSTWIStatus->error, gSTWIStatus);
+            gSTWIStatus->callbackM(request, gSTWIStatus->error);
         return TRUE;
     }
     else
