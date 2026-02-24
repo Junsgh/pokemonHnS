@@ -1406,11 +1406,7 @@ static void InitMapBasedOnPlayerLocation(void)
         if (gSaveBlock1Ptr->pos.y > 37) y++;
         if (gSaveBlock1Ptr->pos.y > 56) y++;
         break;
-    case MAPSEC_ROUTE_46:
-        x = 0;
-        if (xOnMap > 14) x++;
-        if (xOnMap > 28) x++;
-        if (xOnMap > 54) x++;
+    case MAPSEC_KANTO_VICTORY_ROAD:
         break;
     case MAPSEC_UNDERWATER_MARINE_CAVE:
         GetMarineCaveCoords(&sRegionMap->cursorPosX, &sRegionMap->cursorPosY);
