@@ -279,22 +279,22 @@ KurtsHouse_Text_KurtHonoredToMakeBalls:
 	.string "real hero at the WELL.\p"
 	.string "I like your style!\p"
 	.string "I would be honored to make\n"
-	.string "BALLS for a trainer like you.\p"
+	.string "POKé BALLS for a trainer like you.\p"
 	.string "This is all I have now, \n"
 	.string "but take it.$"
 
 KurtsHouse_Text_KurtBallsFromApricorns:
-	.string "KURT: I make BALLS from BERRIES.\p"
+	.string "KURT: I make POKé BALLS from BERRIES.\p"
 	.string "Collect them from trees and bring\n"
-	.string "'em to me in batches of 5.\p"
-	.string "I'll make BALLS out of them.$"
+	.string "'em to me.\p"
+	.string "I'll make POKé BALLS out of them.$"
 
 KurtsHouse_Text_KurtAskYouHaveAnApricorn:
-	.string "KURT: You have 5 BERRIES for me?\p"
-	.string "Fine! I'll turn them into BALLS.$"
+	.string "KURT: You have BERRIES for me?\p"
+	.string "Fine! I'll turn them into POKé BALLS.$"
 
 KurtsHouse_Text_KurtThatsALetdown:
-	.string "KURT: I don't see 5 {STR_VAR_1}s!$"
+	.string "KURT: I don't see {STR_VAR_1}s!$"
 
 KurtsHouse_Text_KurtJustFinishedYourBall:
 	.string "KURT: All done!\n"

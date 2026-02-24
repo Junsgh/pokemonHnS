@@ -44,6 +44,7 @@
 #define TAG_SCROLL_ARROW   2100
 #define TAG_ITEM_ICON_BASE 9110 // immune to time blending
 #define TAG_BERRY_ICON     9150 // berry icon for Kurt shop
+#define TAG_QUANTITY_BERRY 9151 // scaled berry icon for quantity window
 
 #define MAX_ITEMS_SHOWN 8
 
@@ -134,6 +135,7 @@ static EWRAM_DATA u8 (*sItemNames)[ITEM_NAME_LENGTH + 2] = {0};
 static EWRAM_DATA u8 sPurchaseHistoryId = 0;
 static EWRAM_DATA u16 sKurtCurrentBerry = ITEM_NONE;
 static EWRAM_DATA u8 sBerryIconSpriteId = SPRITE_NONE;
+static EWRAM_DATA u8 sQuantityBerryIconSpriteId = SPRITE_NONE;
 EWRAM_DATA struct ItemSlot gMartPurchaseHistory[SMARTSHOPPER_NUM_ITEMS] = {0};
 
 static void Task_ShopMenu(u8 taskId);
@@ -192,6 +194,45 @@ static u16 GetBerryFromBall(u16 ballItem)
     }
     return ITEM_NONE;
 }
+
+static const struct OamData sOamData_QuantityBerryIcon =
+{
+    .y = 0,
+    .affineMode = ST_OAM_AFFINE_DOUBLE,
+    .objMode = ST_OAM_OBJ_NORMAL,
+    .mosaic = FALSE,
+    .bpp = ST_OAM_4BPP,
+    .shape = SPRITE_SHAPE(32x32),
+    .x = 0,
+    .matrixNum = 0,
+    .size = SPRITE_SIZE(32x32),
+    .tileNum = 0,
+    .priority = 0,
+    .paletteNum = 2,
+    .affineParam = 0
+};
+
+static const union AnimCmd sSpriteAnim_QuantityBerryIcon[] =
+{
+    ANIMCMD_FRAME(0, 0),
+    ANIMCMD_END
+};
+
+static const union AnimCmd *const sSpriteAnimTable_QuantityBerryIcon[] =
+{
+    sSpriteAnim_QuantityBerryIcon
+};
+
+static const struct SpriteTemplate sSpriteTemplate_QuantityBerryIcon =
+{
+    .tileTag = 0,
+    .paletteTag = 0,
+    .oam = &sOamData_QuantityBerryIcon,
+    .anims = sSpriteAnimTable_QuantityBerryIcon,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
 
 // Get total quantity of an item in the bag
 static u16 GetItemQuantityInBag(u16 itemId)
@@ -254,6 +295,47 @@ static void RemoveBerryIcon(void)
         FreeSpritePaletteByTag(TAG_BERRY_ICON);
         DestroySprite(&gSprites[sBerryIconSpriteId]);
         sBerryIconSpriteId = SPRITE_NONE;
+    }
+}
+
+static void AddQuantityBerryIcon(u16 berryItem)
+{
+    u8 spriteId;
+    
+    // Remove old icon if it exists
+    if (sQuantityBerryIconSpriteId != SPRITE_NONE)
+    {
+        FreeSpriteTilesByTag(TAG_QUANTITY_BERRY);
+        FreeSpritePaletteByTag(TAG_QUANTITY_BERRY);
+        DestroySprite(&gSprites[sQuantityBerryIconSpriteId]);
+        sQuantityBerryIconSpriteId = SPRITE_NONE;
+    }
+    
+    if (berryItem == ITEM_NONE)
+        return;
+    
+    // Create scaled berry icon using custom template
+    spriteId = AddCustomItemIconSprite(&sSpriteTemplate_QuantityBerryIcon, TAG_QUANTITY_BERRY, TAG_QUANTITY_BERRY, berryItem);
+    if (spriteId != MAX_SPRITES)
+    {
+        sQuantityBerryIconSpriteId = spriteId;
+        // WIN_QUANTITY_PRICE is at tilemap (18,11) = screen position (144, 88), size 80x16
+        gSprites[spriteId].x = 219;
+        gSprites[spriteId].y = 99;
+        gSprites[spriteId].oam.priority = 0;
+        
+        SetOamMatrixRotationScaling(gSprites[spriteId].oam.matrixNum, 192, 192, 0);
+    }
+}
+
+static void RemoveQuantityBerryIcon(void)
+{
+    if (sQuantityBerryIconSpriteId != SPRITE_NONE)
+    {
+        FreeSpriteTilesByTag(TAG_QUANTITY_BERRY);
+        FreeSpritePaletteByTag(TAG_QUANTITY_BERRY);
+        DestroySprite(&gSprites[sQuantityBerryIconSpriteId]);
+        sQuantityBerryIconSpriteId = SPRITE_NONE;
     }
 }
 
@@ -1053,6 +1135,7 @@ static void CB2_InitBuyMenu(void)
         sShopData->itemSpriteIds[0] = SPRITE_NONE;
         sShopData->itemSpriteIds[1] = SPRITE_NONE;
         sBerryIconSpriteId = SPRITE_NONE;
+        sQuantityBerryIconSpriteId = SPRITE_NONE;
         BuyMenuBuildListMenuTemplate();
         BuyMenuInitBgs();
         FillBgTilemapBufferRect_Palette0(0, 0, 0, 0, 0x20, 0x20);
@@ -1083,6 +1166,7 @@ static void CB2_InitBuyMenu(void)
 static void BuyMenuFreeMemory(void)
 {
     RemoveBerryIcon();
+    RemoveQuantityBerryIcon();
     Free(sShopData);
     Free(sListMenuItems);
     Free(sItemNames);
@@ -1182,21 +1266,15 @@ static void BuyMenuPrintPriceInList(u8 windowId, u32 itemId, u8 y)
             u16 berryId = ITEM_NONE;
             u32 i;
             
-            // Look up the berry for this ball
-            for (i = 0; i < ARRAY_COUNT(sKurtBallMappings); i++)
-            {
-                if (sKurtBallMappings[i].ball == itemId)
-                {
-                    berryId = sKurtBallMappings[i].berry;
-                    break;
-                }
-            }
+            berryId = GetBerryFromBall(itemId);
             
             if (berryId != ITEM_NONE)
             {
                 CopyItemName(berryId, gStringVar4);
                 // Remove last 5 characters (" Berry")
                 gStringVar4[StringLength(gStringVar4) - 5] = EOS;
+                StringAppend(gStringVar4, gText_Space);
+                StringAppend(gStringVar4, gText_xOne);
                 x = GetStringRightAlignXOffset(FONT_NARROW, gStringVar4, 120);
                 AddTextPrinterParameterized4(windowId, FONT_NARROW, x, y, 0, 0, sShopBuyMenuTextColors[COLORID_ITEM_LIST], TEXT_SKIP_DRAW, gStringVar4);
             }
@@ -1624,7 +1702,7 @@ static void Task_BuyMenu(u8 taskId)
             if (sMartInfo.martType == MART_TYPE_NORMAL)
                 sShopData->totalCost = (ItemId_GetPrice(itemId) >> IsPokeNewsActive(POKENEWS_SLATEPORT));
             else if (sMartInfo.martType == MART_TYPE_KURT)
-                sShopData->totalCost = 5; // 5 berries per set
+                sShopData->totalCost = 1; // 1 berry per ball
             else
                 sShopData->totalCost = gDecorations[itemId].price;
            
@@ -1634,7 +1712,7 @@ static void Task_BuyMenu(u8 taskId)
                 u16 berryItem = GetBerryFromBall(itemId);
                 u16 berryCount = GetItemQuantityInBag(berryItem);
                 
-                if (berryCount < 5)
+                if (berryCount < 1)
                 {
                     // Not enough berries
                     CopyItemName(berryItem, gStringVar1);
@@ -1644,7 +1722,7 @@ static void Task_BuyMenu(u8 taskId)
                 {
                     // Proceed to quantity selection
                     CopyItemName(itemId, gStringVar1);
-                    BuyMenuDisplayMessage(taskId, gText_Var1SureHowManySets, Task_BuyHowManyDialogueInit);
+                    BuyMenuDisplayMessage(taskId, gText_Var1SureHowMany, Task_BuyHowManyDialogueInit);
                 }
             }
             else if (!IsEnoughMoney(&gSaveBlock1Ptr->money, sShopData->totalCost))
@@ -1717,13 +1795,13 @@ static void Task_BuyHowManyDialogueInit(u8 taskId)
 
     if (sMartInfo.martType == MART_TYPE_KURT)
     {
-        // For Kurt shop, max quantity is berry_count / 5 (sets)
+        // For Kurt shop, max quantity is berry_count
         u16 berryItem = GetBerryFromBall(tItemId);
         u16 berryCount = GetItemQuantityInBag(berryItem);
-        maxQuantity = berryCount / 5;
+        maxQuantity = berryCount;
         
-        if (maxQuantity > MAX_BAG_ITEM_CAPACITY / 5)
-            sShopData->maxQuantity = MAX_BAG_ITEM_CAPACITY / 5;
+        if (maxQuantity > MAX_BAG_ITEM_CAPACITY)
+            sShopData->maxQuantity = MAX_BAG_ITEM_CAPACITY;
         else
             sShopData->maxQuantity = maxQuantity;
     }
@@ -1748,8 +1826,8 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
     {
         if (sMartInfo.martType == MART_TYPE_KURT)
         {
-            // For Kurt shop, total cost is number of sets × 5 berries
-            sShopData->totalCost = tItemCount * 5;
+            // For Kurt shop, total cost is 1:1 ratio
+            sShopData->totalCost = tItemCount;
         }
         else
         {
@@ -1762,6 +1840,7 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
         if (JOY_NEW(A_BUTTON))
         {
             PlaySE(SE_SELECT);
+            RemoveQuantityBerryIcon();
             ClearStdWindowAndFrameToTransparent(WIN_QUANTITY_PRICE, FALSE);
             ClearStdWindowAndFrameToTransparent(WIN_QUANTITY_IN_BAG, FALSE);
             ClearWindowTilemap(WIN_QUANTITY_PRICE);
@@ -1771,7 +1850,7 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
             ConvertIntToDecimalStringN(gStringVar2, tItemCount, STR_CONV_MODE_LEFT_ALIGN, BAG_ITEM_CAPACITY_DIGITS);
             ConvertIntToDecimalStringN(gStringVar3, sShopData->totalCost, STR_CONV_MODE_LEFT_ALIGN, 6);
             if (sMartInfo.martType == MART_TYPE_KURT)
-                BuyMenuDisplayMessage(taskId, gText_KurtVar1AndYouWantedVar2, BuyMenuConfirmPurchase);
+                BuyMenuDisplayMessage(taskId, gText_KurtVar1AndYouWantedVar2, BuyMenuConfirmPurchase); // TODO:
             else
                 BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2, BuyMenuConfirmPurchase);
             
@@ -1779,6 +1858,7 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
         else if (JOY_NEW(B_BUTTON))
         {
             PlaySE(SE_SELECT);
+            RemoveQuantityBerryIcon();
             ClearStdWindowAndFrameToTransparent(WIN_QUANTITY_PRICE, FALSE);
             ClearStdWindowAndFrameToTransparent(WIN_QUANTITY_IN_BAG, FALSE);
             ClearWindowTilemap(WIN_QUANTITY_PRICE);
@@ -1802,7 +1882,7 @@ static void BuyMenuTryMakePurchase(u8 taskId)
     if (sMartInfo.martType == MART_TYPE_KURT)
     {
         // For Kurt: try to add balls first
-        u16 totalBalls = tItemCount * 5;
+        u16 totalBalls = tItemCount;
         if (AddBagItem(tItemId, totalBalls) == TRUE)
         {
             BuyMenuDisplayMessage(taskId, gText_KurtGettingStarted, BuyMenuSubtractMoney);
@@ -1860,7 +1940,7 @@ static void BuyMenuSubtractMoney(u8 taskId)
     {   
         // For Kurt: remove berries and wait for button press before exiting
         u16 berryItem = GetBerryFromBall(tItemId);
-        u16 totalBerries = tItemCount * 5;
+        u16 totalBerries = tItemCount;
         RemoveBagItem(berryItem, totalBerries);
         PlaySE(SE_SHOP);
         // Set VAR_RESULT to indicate purchase was made
@@ -1947,8 +2027,9 @@ static void BuyMenuPrintItemQuantityAndPrice(u8 taskId)
     
     if (sMartInfo.martType == MART_TYPE_KURT)
     {
-        // For Kurt shop: "×001  TOTAL: ###"
-        u16 totalBalls = tItemCount * 5;
+        // For Kurt shop: "×001  ###" with berry sprite
+        u16 totalBalls = tItemCount;
+        u16 berryItem;
         u8 x;
         
         // Print quantity (left side)
@@ -1956,13 +2037,14 @@ static void BuyMenuPrintItemQuantityAndPrice(u8 taskId)
         StringExpandPlaceholders(gStringVar4, gText_xVar1);
         BuyMenuPrint(WIN_QUANTITY_PRICE, gStringVar4, 0, 1, 0, COLORID_NORMAL);
         
-        // Print total ball count (right side)
+        // Print total ball count (right side, leaving space for berry icon)
         ConvertIntToDecimalStringN(gStringVar1, totalBalls, STR_CONV_MODE_LEFT_ALIGN, BAG_ITEM_CAPACITY_DIGITS);
-        StringAppend(gStringVar1, gText_Space);
-        StringCopy(gStringVar4, gText_Balls);
-        StringAppend(gStringVar1, gStringVar4);
-        x = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar1, 80);
+        x = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar1, 62); // Reduced from 80 to leave space for icon
         BuyMenuPrint(WIN_QUANTITY_PRICE, gStringVar1, x, 1, 0, COLORID_NORMAL);
+        
+        // Add scaled berry icon
+        berryItem = GetBerryFromBall(tItemId);
+        AddQuantityBerryIcon(berryItem);
     }
     else
     {
