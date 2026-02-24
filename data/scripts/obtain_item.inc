@@ -80,10 +80,12 @@ EventScript_NoRoomForItem::
 
 EventScript_PlayFanfareObtainedItem::
 	playfanfare MUS_OBTAIN_ITEM
+	waitfanfare
 	return
 
 EventScript_PlayFanfareObtainedTMHM::
 	playfanfare MUS_OBTAIN_TMHM
+	waitfanfare
 	return
 
 Std_ObtainDecoration::

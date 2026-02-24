@@ -168,7 +168,9 @@ NewBarkTown_EventScript_Door::
 
 NewBarkTown_EventScript_TestMan1::
 	givebp 4
+	playfanfare MUS_OBTAIN_B_POINTS
 	msgbox BattleFrontier_Text_ObtainedXBattlePoints, MSGBOX_GETPOINTS
+	waitfanfare
 	end
 
 NewBarkTown_EventScript_TestMan2::
