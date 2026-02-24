@@ -157,22 +157,22 @@ enum {
 #define GFXTAG_UI       5525
 #define PALTAG_UI       5526
 
-#define MAX_RELEARNER_MOVES max(MAX_LEVEL_UP_MOVES, 25)
+#define MAX_RELEARNER_MOVES max(MAX_LEVEL_UP_MOVES, 30)
 
 static EWRAM_DATA struct
 {
-    u8 state;
-    u8 heartSpriteIds[16];                               /*0x001*/
-    u16 movesToLearn[MAX_RELEARNER_MOVES];               /*0x01A*/
-    u8 partyMon;                                         /*0x044*/
-    u8 moveSlot;                                         /*0x045*/
-    struct ListMenuItem menuItems[MAX_RELEARNER_MOVES];  /*0x0E8*/
-    u8 numMenuChoices;                                   /*0x110*/
-    u8 numToShowAtOnce;                                  /*0x111*/
-    u8 moveListMenuTask;                                 /*0x112*/
-    u8 moveListScrollArrowTask;                          /*0x113*/
-    u8 moveDisplayArrowTask;                             /*0x114*/
-    u16 scrollOffset;                                    /*0x116*/
+    u8 state;                                            /*0x000*/
+    u8 heartSpriteIds[16];                               /*0x001 to 0x010*/
+    u16 movesToLearn[MAX_RELEARNER_MOVES];               /*0x011 to 0x04C*/
+    u8 partyMon;                                         /*0x04D*/
+    u8 moveSlot;                                         /*0x04E*/
+    struct ListMenuItem menuItems[MAX_RELEARNER_MOVES];  /*0x04F to 0x0E4*/
+    u8 numMenuChoices;                                   /*0x0E5*/
+    u8 numToShowAtOnce;                                  /*0x0E6*/
+    u8 moveListMenuTask;                                 /*0x0E7*/
+    u8 moveListScrollArrowTask;                          /*0x0E8*/
+    u8 moveDisplayArrowTask;                             /*0x0E9*/
+    u16 scrollOffset;                                    /*0x0EA to 0x0EB*/
 } *sMoveRelearnerStruct = {0};
 
 static EWRAM_DATA struct {
