@@ -196,7 +196,7 @@ static const u16 sShopInventory_TwoBadges[] = {
     ITEM_AWAKENING,
     ITEM_PARALYZE_HEAL,
     ITEM_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -213,7 +213,7 @@ static const u16 sShopInventory_ThreeBadges[] = {
     ITEM_PARALYZE_HEAL,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -230,7 +230,7 @@ static const u16 sShopInventory_FourBadges[] = {
     ITEM_PARALYZE_HEAL,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -250,7 +250,7 @@ static const u16 sShopInventory_FiveBadges[] = {
     ITEM_REVIVE,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -271,7 +271,7 @@ static const u16 sShopInventory_SixBadges[] = {
     ITEM_REVIVE,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -294,7 +294,7 @@ static const u16 sShopInventory_SevenBadges[] = {
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
     ITEM_MAX_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -318,7 +318,7 @@ static const u16 sShopInventory_EightBadges[] = {
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
     ITEM_MAX_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -379,7 +379,7 @@ static const u16 sShopInventory_TwoBadges_PC[] = {
     ITEM_AWAKENING,
     ITEM_PARALYZE_HEAL,
     ITEM_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -398,7 +398,7 @@ static const u16 sShopInventory_ThreeBadges_PC[] = {
     ITEM_PARALYZE_HEAL,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -417,7 +417,7 @@ static const u16 sShopInventory_FourBadges_PC[] = {
     ITEM_PARALYZE_HEAL,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -440,7 +440,7 @@ static const u16 sShopInventory_FiveBadges_PC[] = {
     ITEM_REVIVE,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -464,7 +464,7 @@ static const u16 sShopInventory_SixBadges_PC[] = {
     ITEM_REVIVE,
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -490,7 +490,7 @@ static const u16 sShopInventory_SevenBadges_PC[] = {
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
     ITEM_MAX_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
@@ -518,7 +518,7 @@ static const u16 sShopInventory_EightBadges_PC[] = {
     ITEM_REPEL,
     ITEM_SUPER_REPEL,
     ITEM_MAX_REPEL,
-    ITEM_FLUFFY_TAIL,
+    ITEM_POKE_DOLL,
     ITEM_ESCAPE_ROPE,
     ITEM_NONE
 };
