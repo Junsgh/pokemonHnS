@@ -43,6 +43,7 @@
 
 #define TAG_SCROLL_ARROW   2100
 #define TAG_ITEM_ICON_BASE 9110 // immune to time blending
+#define TAG_BERRY_ICON     9150 // berry icon for Kurt shop
 
 #define MAX_ITEMS_SHOWN 8
 
@@ -53,6 +54,7 @@ enum {
 
 enum {
     WIN_MONEY,
+    WIN_BERRIES,
     WIN_ITEM_LIST,
     WIN_ITEM_DESCRIPTION,
     WIN_QUANTITY_IN_BAG,
@@ -70,6 +72,7 @@ enum {
     MART_TYPE_NORMAL,
     MART_TYPE_DECOR,
     MART_TYPE_DECOR2,
+    MART_TYPE_KURT,
 };
 
 // shop view window NPC info enum
@@ -106,11 +109,31 @@ struct ShopData
     s16 viewportObjects[OBJECT_EVENTS_COUNT][5];
 };
 
+// Kurt's berry-to-ball mapping
+struct KurtBallMapping
+{
+    u16 berry;
+    u16 ball;
+};
+
+static const struct KurtBallMapping sKurtBallMappings[] =
+{
+    {ITEM_PECHA_BERRY,  ITEM_LOVE_BALL},
+    {ITEM_RAWST_BERRY,  ITEM_LURE_BALL},
+    {ITEM_CHERI_BERRY,  ITEM_FRIEND_BALL},
+    {ITEM_ORAN_BERRY,   ITEM_HEAVY_BALL},
+    {ITEM_CHESTO_BERRY, ITEM_MOON_BALL},
+    {ITEM_ASPEAR_BERRY, ITEM_FAST_BALL},
+    {ITEM_PERSIM_BERRY, ITEM_LEVEL_BALL},
+};
+
 static EWRAM_DATA struct MartInfo sMartInfo = {0};
 static EWRAM_DATA struct ShopData *sShopData = NULL;
 static EWRAM_DATA struct ListMenuItem *sListMenuItems = NULL;
 static EWRAM_DATA u8 (*sItemNames)[ITEM_NAME_LENGTH + 2] = {0};
 static EWRAM_DATA u8 sPurchaseHistoryId = 0;
+static EWRAM_DATA u16 sKurtCurrentBerry = ITEM_NONE;
+static EWRAM_DATA u8 sBerryIconSpriteId = SPRITE_NONE;
 EWRAM_DATA struct ItemSlot gMartPurchaseHistory[SMARTSHOPPER_NUM_ITEMS] = {0};
 
 static void Task_ShopMenu(u8 taskId);
@@ -152,10 +175,113 @@ static void BuyMenuSubtractMoney(u8 taskId);
 static void RecordItemPurchase(u8 taskId);
 static void Task_ReturnToItemListAfterItemPurchase(u8 taskId);
 static void Task_ReturnToItemListAfterDecorationPurchase(u8 taskId);
+static void Task_ExitKurtShopAfterPurchase(u8 taskId);
 static void Task_HandleShopMenuBuy(u8 taskId);
 static void Task_HandleShopMenuSell(u8 taskId);
 static void BuyMenuPrintItemDescriptionAndShowItemIcon(s32 item, bool8 onInit, struct ListMenu *list);
 static void BuyMenuPrintPriceInList(u8 windowId, u32 itemId, u8 y);
+
+// Kurt shop helper functions
+static u16 GetBerryFromBall(u16 ballItem)
+{
+    u32 i;
+    for (i = 0; i < ARRAY_COUNT(sKurtBallMappings); i++)
+    {
+        if (sKurtBallMappings[i].ball == ballItem)
+            return sKurtBallMappings[i].berry;
+    }
+    return ITEM_NONE;
+}
+
+// Get total quantity of an item in the bag
+static u16 GetItemQuantityInBag(u16 itemId)
+{
+    u8 i;
+    u8 pocket;
+    u16 totalQuantity = 0;
+    
+    if (ItemId_GetPocket(itemId) == 0)
+        return 0;
+    
+    pocket = ItemId_GetPocket(itemId) - 1;
+    
+    // Sum up quantities across all slots that contain this item
+    for (i = 0; i < gBagPockets[pocket].capacity; i++)
+    {
+        if (gBagPockets[pocket].itemSlots[i].itemId == itemId)
+        {
+            totalQuantity += GetBagItemQuantity(&gBagPockets[pocket].itemSlots[i].quantity);
+        }
+    }
+    
+    return totalQuantity;
+}
+
+static void AddBerryIcon(u16 berryItem)
+{
+    u8 spriteId;
+    
+    // Remove old icon if it exists
+    if (sBerryIconSpriteId != SPRITE_NONE)
+    {
+        FreeSpriteTilesByTag(TAG_BERRY_ICON);
+        FreeSpritePaletteByTag(TAG_BERRY_ICON);
+        DestroySprite(&gSprites[sBerryIconSpriteId]);
+        sBerryIconSpriteId = SPRITE_NONE;
+    }
+    
+    if (berryItem == ITEM_NONE)
+        return;
+    
+    // Create berry icon using standard item icon function
+    spriteId = AddItemIconSprite(TAG_BERRY_ICON, TAG_BERRY_ICON, berryItem);
+    if (spriteId != MAX_SPRITES)
+    {
+        sBerryIconSpriteId = spriteId;
+        // Position at left side of berry window
+        // WIN_BERRIES is at screen position (8,8), size 80x24
+        gSprites[spriteId].x = 22;  // 8 + 13 (left padding + half icon width)
+        gSprites[spriteId].y = 24;  // 8 + 12 (center vertically in window)
+        gSprites[spriteId].oam.priority = 0;
+    }
+}
+
+static void RemoveBerryIcon(void)
+{
+    if (sBerryIconSpriteId != SPRITE_NONE)
+    {
+        FreeSpriteTilesByTag(TAG_BERRY_ICON);
+        FreeSpritePaletteByTag(TAG_BERRY_ICON);
+        DestroySprite(&gSprites[sBerryIconSpriteId]);
+        sBerryIconSpriteId = SPRITE_NONE;
+    }
+}
+
+static void PrintBerryCount(u8 windowId, u16 berryItem)
+{
+    u16 berryCount;
+    
+    FillWindowPixelBuffer(windowId, PIXEL_FILL(1));
+    
+    if (berryItem == ITEM_NONE)
+    {
+        RemoveBerryIcon();
+        return;
+    }
+    
+    // Get actual berry count from bag
+    berryCount = GetItemQuantityInBag(berryItem);
+    
+    // Add/update berry icon sprite
+    AddBerryIcon(berryItem);
+    
+    // Format string: "COUNT: ###"
+    ConvertIntToDecimalStringN(gStringVar1, berryCount, STR_CONV_MODE_LEFT_ALIGN, 3);
+    StringExpandPlaceholders(gStringVar4, gText_InBagVar1);
+    
+    // Print text after the icon
+    AddTextPrinterParameterized(windowId, FONT_NORMAL, gStringVar4, 23, 5, 0, NULL);
+}
 
 static const u16 sShopInventory_ZeroBadges[] = {
     ITEM_POKE_BALL,
@@ -651,6 +777,15 @@ static const struct WindowTemplate sShopBuyMenuWindowTemplates[] =
         .paletteNum = 15,
         .baseBlock = 0x001E,
     },
+    [WIN_BERRIES] = {
+        .bg = 0,
+        .tilemapLeft = 1,
+        .tilemapTop = 1,
+        .width = 10,
+        .height = 3,
+        .paletteNum = 15,
+        .baseBlock = 0x001E,
+    },
     [WIN_ITEM_LIST] = {
         .bg = 0,
         .tilemapLeft = 14,
@@ -658,7 +793,7 @@ static const struct WindowTemplate sShopBuyMenuWindowTemplates[] =
         .width = 15,
         .height = 16,
         .paletteNum = 15,
-        .baseBlock = 0x0032,
+        .baseBlock = 0x003C,  // Adjusted: was 0x0032, +10 blocks for WIN_BERRIES
     },
     [WIN_ITEM_DESCRIPTION] = {
         .bg = 0,
@@ -667,7 +802,7 @@ static const struct WindowTemplate sShopBuyMenuWindowTemplates[] =
         .width = 14,
         .height = 6,
         .paletteNum = 15,
-        .baseBlock = 0x0122,
+        .baseBlock = 0x012C,  // Adjusted: was 0x0122, +10 blocks
     },
     [WIN_QUANTITY_IN_BAG] = {
         .bg = 0,
@@ -676,7 +811,7 @@ static const struct WindowTemplate sShopBuyMenuWindowTemplates[] =
         .width = 12,
         .height = 2,
         .paletteNum = 15,
-        .baseBlock = 0x0176,
+        .baseBlock = 0x0180,  // Adjusted: was 0x0176, +10 blocks
     },
     [WIN_QUANTITY_PRICE] = {
         .bg = 0,
@@ -685,7 +820,7 @@ static const struct WindowTemplate sShopBuyMenuWindowTemplates[] =
         .width = 10,
         .height = 2,
         .paletteNum = 15,
-        .baseBlock = 0x018E,
+        .baseBlock = 0x0198,  // Adjusted: was 0x018E, +10 blocks
     },
     [WIN_MESSAGE] = {
         .bg = 0,
@@ -694,7 +829,7 @@ static const struct WindowTemplate sShopBuyMenuWindowTemplates[] =
         .width = 27,
         .height = 4,
         .paletteNum = 15,
-        .baseBlock = 0x01A2,
+        .baseBlock = 0x01AC,  // Adjusted: was 0x01A2, +10 blocks
     },
     DUMMY_WIN_TEMPLATE
 };
@@ -707,7 +842,7 @@ static const struct WindowTemplate sShopBuyMenuYesNoWindowTemplates =
     .width = 5,
     .height = 4,
     .paletteNum = 15,
-    .baseBlock = 0x020E,
+    .baseBlock = 0x0218,  // Adjusted: was 0x020E, +10 blocks
 };
 
 static const u8 sShopBuyMenuTextColors[][3] =
@@ -917,6 +1052,7 @@ static void CB2_InitBuyMenu(void)
         sShopData->scrollIndicatorsTaskId = TASK_NONE;
         sShopData->itemSpriteIds[0] = SPRITE_NONE;
         sShopData->itemSpriteIds[1] = SPRITE_NONE;
+        sBerryIconSpriteId = SPRITE_NONE;
         BuyMenuBuildListMenuTemplate();
         BuyMenuInitBgs();
         FillBgTilemapBufferRect_Palette0(0, 0, 0, 0, 0x20, 0x20);
@@ -946,6 +1082,7 @@ static void CB2_InitBuyMenu(void)
 
 static void BuyMenuFreeMemory(void)
 {
+    RemoveBerryIcon();
     Free(sShopData);
     Free(sListMenuItems);
     Free(sItemNames);
@@ -978,7 +1115,7 @@ static void BuyMenuBuildListMenuTemplate(void)
 
 static void BuyMenuSetListEntry(struct ListMenuItem *menuItem, u16 item, u8 *name)
 {
-    if (sMartInfo.martType == MART_TYPE_NORMAL)
+    if (sMartInfo.martType == MART_TYPE_NORMAL || sMartInfo.martType == MART_TYPE_KURT)
         CopyItemName(item, name);
     else
         StringCopy(name, gDecorations[item].name);
@@ -1004,12 +1141,29 @@ static void BuyMenuPrintItemDescriptionAndShowItemIcon(s32 item, bool8 onInit, s
     {
         if (sMartInfo.martType == MART_TYPE_NORMAL)
             description = ItemId_GetDescription(item);
+        else if (sMartInfo.martType == MART_TYPE_KURT)
+        {
+            description = ItemId_GetDescription(item);
+            // Update berry count for Kurt shop
+            sKurtCurrentBerry = GetBerryFromBall(item);
+            PrintBerryCount(WIN_BERRIES, sKurtCurrentBerry);
+            CopyWindowToVram(WIN_BERRIES, COPYWIN_FULL);
+        }
         else
             description = gDecorations[item].description;
     }
     else
     {
         description = gText_QuitShopping;
+        
+        // For Kurt shop, update berry display to show exit
+        if (sMartInfo.martType == MART_TYPE_KURT)
+        {
+            FillWindowPixelBuffer(WIN_BERRIES, PIXEL_FILL(1));
+            AddBerryIcon(ITEM_LIST_END);
+            AddTextPrinterParameterized(WIN_BERRIES, FONT_NORMAL, gText_ExitMenu, 28, 5, 0, NULL);
+            CopyWindowToVram(WIN_BERRIES, COPYWIN_FULL);
+        }
     }
 
     FillWindowPixelBuffer(WIN_ITEM_DESCRIPTION, PIXEL_FILL(0));
@@ -1022,7 +1176,33 @@ static void BuyMenuPrintPriceInList(u8 windowId, u32 itemId, u8 y)
 
     if (itemId != LIST_CANCEL)
     {
-        if (sMartInfo.martType == MART_TYPE_NORMAL)
+        if (sMartInfo.martType == MART_TYPE_KURT)
+        {
+            // For Kurt shop, show "1 BerryName" instead of price (removing " Berry" suffix)
+            u16 berryId = ITEM_NONE;
+            u32 i;
+            
+            // Look up the berry for this ball
+            for (i = 0; i < ARRAY_COUNT(sKurtBallMappings); i++)
+            {
+                if (sKurtBallMappings[i].ball == itemId)
+                {
+                    berryId = sKurtBallMappings[i].berry;
+                    break;
+                }
+            }
+            
+            if (berryId != ITEM_NONE)
+            {
+                CopyItemName(berryId, gStringVar4);
+                // Remove last 5 characters (" Berry")
+                gStringVar4[StringLength(gStringVar4) - 5] = EOS;
+                x = GetStringRightAlignXOffset(FONT_NARROW, gStringVar4, 120);
+                AddTextPrinterParameterized4(windowId, FONT_NARROW, x, y, 0, 0, sShopBuyMenuTextColors[COLORID_ITEM_LIST], TEXT_SKIP_DRAW, gStringVar4);
+            }
+            return;
+        }
+        else if (sMartInfo.martType == MART_TYPE_NORMAL)
         {
             ConvertIntToDecimalStringN(
                 gStringVar1,
@@ -1088,7 +1268,7 @@ static void BuyMenuAddItemIcon(u16 item, u8 iconSlot)
     if (*spriteIdPtr != SPRITE_NONE)
         return;
 
-    if (sMartInfo.martType == MART_TYPE_NORMAL || item == ITEM_LIST_END)
+    if (sMartInfo.martType == MART_TYPE_NORMAL || sMartInfo.martType == MART_TYPE_KURT || item == ITEM_LIST_END)
     {
         spriteId = AddItemIconSprite(iconSlot + TAG_ITEM_ICON_BASE, iconSlot + TAG_ITEM_ICON_BASE, item);
         if (spriteId != MAX_SPRITES)
@@ -1164,11 +1344,17 @@ static void BuyMenuDecompressBgGraphics(void)
 
 static void BuyMenuInitWindows(void)
 {
+    u8 moneyWindowId;
+    
     InitWindows(sShopBuyMenuWindowTemplates);
     DeactivateAllTextPrinters();
-    LoadUserWindowBorderGfx(WIN_MONEY, 1, BG_PLTT_ID(13));
-    LoadMessageBoxGfx(WIN_MONEY, 0xA, BG_PLTT_ID(14));
-    PutWindowTilemap(WIN_MONEY);
+    
+    // Use WIN_BERRIES for Kurt shop (taller window), WIN_MONEY for others
+    moneyWindowId = (sMartInfo.martType == MART_TYPE_KURT) ? WIN_BERRIES : WIN_MONEY;
+    
+    LoadUserWindowBorderGfx(moneyWindowId, 1, BG_PLTT_ID(13));
+    LoadMessageBoxGfx(moneyWindowId, 0xA, BG_PLTT_ID(14));
+    PutWindowTilemap(moneyWindowId);
     PutWindowTilemap(WIN_ITEM_LIST);
     PutWindowTilemap(WIN_ITEM_DESCRIPTION);
 }
@@ -1188,8 +1374,28 @@ static void BuyMenuDrawGraphics(void)
 {
     BuyMenuDrawMapGraphics();
     BuyMenuCopyMenuBgToBg1TilemapBuffer();
-    AddMoneyLabelObject(19, 11);
-    PrintMoneyAmountInMoneyBoxWithBorder(WIN_MONEY, 1, 13, GetMoney(&gSaveBlock1Ptr->money));
+    
+    if (sMartInfo.martType == MART_TYPE_KURT)
+    {
+        // For Kurt shop, draw berry count window instead of money
+        // Fill window buffer first to clear any garbage graphics
+        // FillWindowPixelBuffer(WIN_BERRIES, PIXEL_FILL(1));
+        DrawStdFrameWithCustomTileAndPalette(WIN_BERRIES, FALSE, 1, 13);
+        // Initialize with first item's berry
+        if (sMartInfo.itemCount > 0)
+        {
+            u16 firstBall = sMartInfo.itemList[0];
+            sKurtCurrentBerry = GetBerryFromBall(firstBall);
+            PrintBerryCount(WIN_BERRIES, sKurtCurrentBerry);
+        }
+        
+    }
+    else
+    {
+        AddMoneyLabelObject(19, 11);
+        PrintMoneyAmountInMoneyBoxWithBorder(WIN_MONEY, 1, 13, GetMoney(&gSaveBlock1Ptr->money));
+    }
+    
     ScheduleBgCopyTilemapToVram(0);
     ScheduleBgCopyTilemapToVram(1);
     ScheduleBgCopyTilemapToVram(2);
@@ -1403,6 +1609,9 @@ static void Task_BuyMenu(u8 taskId)
             break;
         case LIST_CANCEL:
             PlaySE(SE_SELECT);
+            // Set VAR_RESULT to indicate no purchase was made
+            if (sMartInfo.martType == MART_TYPE_KURT)
+                gSpecialVar_Result = FALSE;
             ExitBuyMenu(taskId);
             break;
         default:
@@ -1414,10 +1623,31 @@ static void Task_BuyMenu(u8 taskId)
 
             if (sMartInfo.martType == MART_TYPE_NORMAL)
                 sShopData->totalCost = (ItemId_GetPrice(itemId) >> IsPokeNewsActive(POKENEWS_SLATEPORT));
+            else if (sMartInfo.martType == MART_TYPE_KURT)
+                sShopData->totalCost = 5; // 5 berries per set
             else
                 sShopData->totalCost = gDecorations[itemId].price;
            
-            if (!IsEnoughMoney(&gSaveBlock1Ptr->money, sShopData->totalCost))
+            if (sMartInfo.martType == MART_TYPE_KURT)
+            {
+                // For Kurt shop, check berry availability
+                u16 berryItem = GetBerryFromBall(itemId);
+                u16 berryCount = GetItemQuantityInBag(berryItem);
+                
+                if (berryCount < 5)
+                {
+                    // Not enough berries
+                    CopyItemName(berryItem, gStringVar1);
+                    BuyMenuDisplayMessage(taskId, gText_DontHaveEnoughVar1, BuyMenuReturnToItemList);
+                }
+                else
+                {
+                    // Proceed to quantity selection
+                    CopyItemName(itemId, gStringVar1);
+                    BuyMenuDisplayMessage(taskId, gText_Var1SureHowManySets, Task_BuyHowManyDialogueInit);
+                }
+            }
+            else if (!IsEnoughMoney(&gSaveBlock1Ptr->money, sShopData->totalCost))
             {
                 BuyMenuDisplayMessage(taskId, gText_YouDontHaveMoney, BuyMenuReturnToItemList);
             }
@@ -1485,12 +1715,27 @@ static void Task_BuyHowManyDialogueInit(u8 taskId)
     BuyMenuPrintItemQuantityAndPrice(taskId);
     ScheduleBgCopyTilemapToVram(0);
 
-    maxQuantity = GetMoney(&gSaveBlock1Ptr->money) / sShopData->totalCost;
-
-    if (maxQuantity > MAX_BAG_ITEM_CAPACITY)
-        sShopData->maxQuantity = MAX_BAG_ITEM_CAPACITY;
+    if (sMartInfo.martType == MART_TYPE_KURT)
+    {
+        // For Kurt shop, max quantity is berry_count / 5 (sets)
+        u16 berryItem = GetBerryFromBall(tItemId);
+        u16 berryCount = GetItemQuantityInBag(berryItem);
+        maxQuantity = berryCount / 5;
+        
+        if (maxQuantity > MAX_BAG_ITEM_CAPACITY / 5)
+            sShopData->maxQuantity = MAX_BAG_ITEM_CAPACITY / 5;
+        else
+            sShopData->maxQuantity = maxQuantity;
+    }
     else
-        sShopData->maxQuantity = maxQuantity;
+    {
+        maxQuantity = GetMoney(&gSaveBlock1Ptr->money) / sShopData->totalCost;
+
+        if (maxQuantity > MAX_BAG_ITEM_CAPACITY)
+            sShopData->maxQuantity = MAX_BAG_ITEM_CAPACITY;
+        else
+            sShopData->maxQuantity = maxQuantity;
+    }
 
     gTasks[taskId].func = Task_BuyHowManyDialogueHandleInput;
 }
@@ -1501,7 +1746,15 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
 
     if (AdjustQuantityAccordingToDPadInput(&tItemCount, sShopData->maxQuantity) == TRUE)
     {
-        sShopData->totalCost = (ItemId_GetPrice(tItemId) >> IsPokeNewsActive(POKENEWS_SLATEPORT)) * tItemCount;
+        if (sMartInfo.martType == MART_TYPE_KURT)
+        {
+            // For Kurt shop, total cost is number of sets × 5 berries
+            sShopData->totalCost = tItemCount * 5;
+        }
+        else
+        {
+            sShopData->totalCost = (ItemId_GetPrice(tItemId) >> IsPokeNewsActive(POKENEWS_SLATEPORT)) * tItemCount;
+        }
         BuyMenuPrintItemQuantityAndPrice(taskId);
     }
     else
@@ -1517,7 +1770,11 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
             CopyItemName(tItemId, gStringVar1);
             ConvertIntToDecimalStringN(gStringVar2, tItemCount, STR_CONV_MODE_LEFT_ALIGN, BAG_ITEM_CAPACITY_DIGITS);
             ConvertIntToDecimalStringN(gStringVar3, sShopData->totalCost, STR_CONV_MODE_LEFT_ALIGN, 6);
-            BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2, BuyMenuConfirmPurchase);
+            if (sMartInfo.martType == MART_TYPE_KURT)
+                BuyMenuDisplayMessage(taskId, gText_KurtVar1AndYouWantedVar2, BuyMenuConfirmPurchase);
+            else
+                BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2, BuyMenuConfirmPurchase);
+            
         }
         else if (JOY_NEW(B_BUTTON))
         {
@@ -1542,7 +1799,21 @@ static void BuyMenuTryMakePurchase(u8 taskId)
 
     PutWindowTilemap(WIN_ITEM_LIST);
 
-    if (sMartInfo.martType == MART_TYPE_NORMAL)
+    if (sMartInfo.martType == MART_TYPE_KURT)
+    {
+        // For Kurt: try to add balls first
+        u16 totalBalls = tItemCount * 5;
+        if (AddBagItem(tItemId, totalBalls) == TRUE)
+        {
+            BuyMenuDisplayMessage(taskId, gText_KurtGettingStarted, BuyMenuSubtractMoney);
+            RecordItemPurchase(taskId);
+        }
+        else
+        {
+            BuyMenuDisplayMessage(taskId, gText_NoMoreRoomForThis, BuyMenuReturnToItemList);
+        }
+    }
+    else if (sMartInfo.martType == MART_TYPE_NORMAL)
     {
         if (AddBagItem(tItemId, tItemCount) == TRUE)
         {
@@ -1581,15 +1852,33 @@ static void BuyMenuTryMakePurchase(u8 taskId)
 
 static void BuyMenuSubtractMoney(u8 taskId)
 {
+    s16 *data = gTasks[taskId].data;
+    
     IncrementGameStat(GAME_STAT_SHOPPED);
-    RemoveMoney(&gSaveBlock1Ptr->money, sShopData->totalCost);
-    PlaySE(SE_SHOP);
-    PrintMoneyAmountInMoneyBox(WIN_MONEY, GetMoney(&gSaveBlock1Ptr->money), 0);
-
-    if (sMartInfo.martType == MART_TYPE_NORMAL)
-        gTasks[taskId].func = Task_ReturnToItemListAfterItemPurchase;
+    
+    if (sMartInfo.martType == MART_TYPE_KURT)
+    {   
+        // For Kurt: remove berries and wait for button press before exiting
+        u16 berryItem = GetBerryFromBall(tItemId);
+        u16 totalBerries = tItemCount * 5;
+        RemoveBagItem(berryItem, totalBerries);
+        PlaySE(SE_SHOP);
+        // Set VAR_RESULT to indicate purchase was made
+        gSpecialVar_Result = TRUE;
+        // Wait for button press before exiting
+        gTasks[taskId].func = Task_ExitKurtShopAfterPurchase;
+    }
     else
-        gTasks[taskId].func = Task_ReturnToItemListAfterDecorationPurchase;
+    {
+        RemoveMoney(&gSaveBlock1Ptr->money, sShopData->totalCost);
+        PlaySE(SE_SHOP);
+        PrintMoneyAmountInMoneyBox(WIN_MONEY, GetMoney(&gSaveBlock1Ptr->money), 0);
+
+        if (sMartInfo.martType == MART_TYPE_NORMAL)
+            gTasks[taskId].func = Task_ReturnToItemListAfterItemPurchase;
+        else
+            gTasks[taskId].func = Task_ReturnToItemListAfterDecorationPurchase;
+    }
 }
 
 static void Task_ReturnToItemListAfterItemPurchase(u8 taskId)
@@ -1624,6 +1913,19 @@ static void Task_ReturnToItemListAfterDecorationPurchase(u8 taskId)
     }
 }
 
+static void Task_ExitKurtShopAfterPurchase(u8 taskId)
+{
+    if (JOY_NEW(A_BUTTON | B_BUTTON))
+    {
+        PlaySE(SE_SELECT);
+        ClearDialogWindowAndFrameToTransparent(WIN_MESSAGE, FALSE);
+        ClearWindowTilemap(WIN_MESSAGE);
+        ScheduleBgCopyTilemapToVram(0);
+        BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+        gTasks[taskId].func = Task_ExitBuyMenu;
+    }
+}
+
 static void BuyMenuReturnToItemList(u8 taskId)
 {
     s16 *data = gTasks[taskId].data;
@@ -1642,15 +1944,41 @@ static void BuyMenuPrintItemQuantityAndPrice(u8 taskId)
     s16 *data = gTasks[taskId].data;
 
     FillWindowPixelBuffer(WIN_QUANTITY_PRICE, PIXEL_FILL(1));
-    PrintMoneyAmount(WIN_QUANTITY_PRICE, 32, 1, sShopData->totalCost, TEXT_SKIP_DRAW);
-    ConvertIntToDecimalStringN(gStringVar1, tItemCount, STR_CONV_MODE_LEADING_ZEROS, BAG_ITEM_CAPACITY_DIGITS);
-    StringExpandPlaceholders(gStringVar4, gText_xVar1);
-    BuyMenuPrint(WIN_QUANTITY_PRICE, gStringVar4, 0, 1, 0, COLORID_NORMAL);
+    
+    if (sMartInfo.martType == MART_TYPE_KURT)
+    {
+        // For Kurt shop: "×001  TOTAL: ###"
+        u16 totalBalls = tItemCount * 5;
+        u8 x;
+        
+        // Print quantity (left side)
+        ConvertIntToDecimalStringN(gStringVar1, tItemCount, STR_CONV_MODE_LEADING_ZEROS, BAG_ITEM_CAPACITY_DIGITS);
+        StringExpandPlaceholders(gStringVar4, gText_xVar1);
+        BuyMenuPrint(WIN_QUANTITY_PRICE, gStringVar4, 0, 1, 0, COLORID_NORMAL);
+        
+        // Print total ball count (right side)
+        ConvertIntToDecimalStringN(gStringVar1, totalBalls, STR_CONV_MODE_LEFT_ALIGN, BAG_ITEM_CAPACITY_DIGITS);
+        StringAppend(gStringVar1, gText_Space);
+        StringCopy(gStringVar4, gText_Balls);
+        StringAppend(gStringVar1, gStringVar4);
+        x = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar1, 80);
+        BuyMenuPrint(WIN_QUANTITY_PRICE, gStringVar1, x, 1, 0, COLORID_NORMAL);
+    }
+    else
+    {
+        PrintMoneyAmount(WIN_QUANTITY_PRICE, 32, 1, sShopData->totalCost, TEXT_SKIP_DRAW);
+        ConvertIntToDecimalStringN(gStringVar1, tItemCount, STR_CONV_MODE_LEADING_ZEROS, BAG_ITEM_CAPACITY_DIGITS);
+        StringExpandPlaceholders(gStringVar4, gText_xVar1);
+        BuyMenuPrint(WIN_QUANTITY_PRICE, gStringVar4, 0, 1, 0, COLORID_NORMAL);
+    }
 }
 
 static void ExitBuyMenu(u8 taskId)
 {
-    gFieldCallback = MapPostLoadHook_ReturnToShopMenu;
+    // Don't set field callback for Kurt shop (goes back to script instead)
+    if (sMartInfo.martType != MART_TYPE_KURT)
+        gFieldCallback = MapPostLoadHook_ReturnToShopMenu;
+    
     BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
     gTasks[taskId].func = Task_ExitBuyMenu;
 }
@@ -1662,6 +1990,15 @@ static void Task_ExitBuyMenu(u8 taskId)
         RemoveMoneyLabelObject();
         BuyMenuFreeMemory();
         SetMainCallback2(CB2_ReturnToField);
+        
+        // For Kurt shop, unlock controls and continue script
+        if (sMartInfo.martType == MART_TYPE_KURT)
+        {
+            UnlockPlayerFieldControls();
+            if (sMartInfo.callback)
+                sMartInfo.callback();
+        }
+        
         DestroyTask(taskId);
     }
 }
@@ -1724,4 +2061,24 @@ void CreateDecorationShop2Menu(const u16 *itemsForSale)
     CreateShopMenu(MART_TYPE_DECOR2);
     SetShopItemsForSale(itemsForSale);
     SetShopMenuCallback(ScriptContext_Enable);
+}
+
+void CreateKurtBallShop(const u16 *itemsForSale)
+{
+    u8 taskId;
+    s16 *data;
+    
+    // Skip BUY/QUIT menu, go straight to buy menu for Kurt    LockPlayerFieldControls();
+    sMartInfo.martType = MART_TYPE_KURT;
+    SetShopItemsForSale(itemsForSale);
+    ClearItemPurchases();
+    SetShopMenuCallback(ScriptContext_Enable);
+    
+    // Go directly to buy menu
+    taskId = CreateTask(Task_ShopMenu, 8);
+    data = gTasks[taskId].data;
+    data[8] = (u32)CB2_InitBuyMenu >> 16;  // tCallbackHi
+    data[9] = (u32)CB2_InitBuyMenu;        // tCallbackLo
+    gTasks[taskId].func = Task_GoToBuyOrSellMenu;
+    FadeScreen(FADE_TO_BLACK, 0);
 }

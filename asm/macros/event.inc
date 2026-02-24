@@ -1121,6 +1121,13 @@
 	.4byte \products
 	.endm
 
+	@ Opens Kurt's special ball shop where berries are traded for special Poke Balls.
+	@ Products should be a list of .2byte ball item values preceded by an .align 2
+	.macro kurtshop products:req
+	.byte 0xf6
+	.4byte \products
+	.endm
+
 	@ Starts up the slot machine minigame. id is a SLOT_MACHINE_* value that influences probabilities of certain reel outcomes.
 	.macro playslotmachine id:req
 	.byte 0x89
