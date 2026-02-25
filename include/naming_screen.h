@@ -12,6 +12,6 @@ enum {
     NAMING_SCREEN_RIVAL,
 };
 
-void DoNamingScreen(u8 templateNum, u8 *destBuffer, u16 monSpecies, u16 monGender, u32 monPersonality, MainCallback returnCallback);
+void DoNamingScreen(u8 templateNum, u8 *destBuffer, u16 monSpecies, u16 monGender, u32 monPersonality, u32 monOtId, MainCallback returnCallback);
 
 #endif // GUARD_NAMING_SCREEN_H

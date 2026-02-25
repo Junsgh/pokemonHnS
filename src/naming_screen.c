@@ -181,6 +181,7 @@ struct NamingScreenData
     u16 monSpecies;
     u16 monGender;
     u32 monPersonality;
+    u32 monOtId;
     MainCallback returnCallback;
     struct Sprite *shinyStarSprite;
 };
@@ -416,7 +417,7 @@ static void VBlankCB_NamingScreen(void);
 static void NamingScreen_ShowBgs(void);
 static bool8 IsWideLetter(u8);
 
-void DoNamingScreen(u8 templateNum, u8 *destBuffer, u16 monSpecies, u16 monGender, u32 monPersonality, MainCallback returnCallback)
+void DoNamingScreen(u8 templateNum, u8 *destBuffer, u16 monSpecies, u16 monGender, u32 monPersonality, u32 monOtId, MainCallback returnCallback)
 {
     sNamingScreen = Alloc(sizeof(struct NamingScreenData));
     if (!sNamingScreen)
@@ -429,6 +430,7 @@ void DoNamingScreen(u8 templateNum, u8 *destBuffer, u16 monSpecies, u16 monGende
         sNamingScreen->monSpecies = monSpecies;
         sNamingScreen->monGender = monGender;
         sNamingScreen->monPersonality = monPersonality;
+        sNamingScreen->monOtId = monOtId;
         sNamingScreen->destBuffer = destBuffer;
         sNamingScreen->returnCallback = returnCallback;
         sNamingScreen->shinyStarSprite = NULL;
@@ -1488,11 +1490,9 @@ static bool8 ShouldShowShinyIndicator(void)
     if (sNamingScreen->monPersonality == 0)
         return FALSE;
 
-    // Check if shiny using player's OT ID and mon's personality
-    u32 otId = (u32)gSaveBlock2Ptr->playerTrainerId[1] << 16
-             | (u32)gSaveBlock2Ptr->playerTrainerId[0];
-
-    return IsShinyOtIdPersonality(otId, sNamingScreen->monPersonality);
+    // Check if shiny using mon's OT ID (not player's current OT ID)
+    // This matches how the summary screen checks shininess
+    return IsShinyOtIdPersonality(sNamingScreen->monOtId, sNamingScreen->monPersonality);
 }
 
 static void CreateShinyStarSprite(void)
@@ -2188,22 +2188,22 @@ static bool8 IsWideLetter(u8 character)
 // Debug? Arguments aren't sensible for non-player screens.
 static void UNUSED Debug_NamingScreenPlayer(void)
 {
-    DoNamingScreen(NAMING_SCREEN_PLAYER, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, CB2_ReturnToFieldWithOpenMenu);
+    DoNamingScreen(NAMING_SCREEN_PLAYER, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, 0, CB2_ReturnToFieldWithOpenMenu);
 }
 
 static void UNUSED Debug_NamingScreenBox(void)
 {
-    DoNamingScreen(NAMING_SCREEN_BOX, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, CB2_ReturnToFieldWithOpenMenu);
+    DoNamingScreen(NAMING_SCREEN_BOX, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, 0, CB2_ReturnToFieldWithOpenMenu);
 }
 
 static void UNUSED Debug_NamingScreenCaughtMon(void)
 {
-    DoNamingScreen(NAMING_SCREEN_CAUGHT_MON, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, CB2_ReturnToFieldWithOpenMenu);
+    DoNamingScreen(NAMING_SCREEN_CAUGHT_MON, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, 0, CB2_ReturnToFieldWithOpenMenu);
 }
 
 static void UNUSED Debug_NamingScreenNickname(void)
 {
-    DoNamingScreen(NAMING_SCREEN_NICKNAME, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, CB2_ReturnToFieldWithOpenMenu);
+    DoNamingScreen(NAMING_SCREEN_NICKNAME, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, 0, CB2_ReturnToFieldWithOpenMenu);
 }
 
 void NameRival(void)
@@ -2213,7 +2213,7 @@ void NameRival(void)
     //else
     //    StringCopy(gSaveBlock2Ptr->rivalName, gMalePresetNames[Random() % NELEMS(gMalePresetNames)]); // choose a random name from gMalePresetNames for a female player's rival
     StringCopy(gSaveBlock2Ptr->rivalName, gSilverPresetNames[Random() % NELEMS(gSilverPresetNames)]); // choose a random name for silver
-    DoNamingScreen(NAMING_SCREEN_RIVAL, gSaveBlock2Ptr->rivalName, 0, 0, 0, CB2_ReturnToFieldContinueScript);
+    DoNamingScreen(NAMING_SCREEN_RIVAL, gSaveBlock2Ptr->rivalName, 0, 0, 0, 0, CB2_ReturnToFieldContinueScript);
 }
 
 
