@@ -6593,7 +6593,9 @@ s32 CalculateBaseDamage(struct BattlePokemon *attacker, struct BattlePokemon *de
         spAttack = (150 * spAttack) / 100;
     if (attacker->ability == ABILITY_MINUS && ABILITY_ON_FIELD2(ABILITY_PLUS))
         spAttack = (150 * spAttack) / 100;
-    if ((gSaveBlock2Ptr->optionsDifficulty == 2))
+    
+    //Not updated to HnS #DIFFICULTY
+    /*if ((gSaveBlock2Ptr->optionsDifficulty == 2))
     {
         // Sceptile gets Thick Fat to reduce dmg from their weaknesses, and a 10% dmg increase.
         if ((attacker->species == SPECIES_SCEPTILE) && (attackerHoldEffect == HOLD_EFFECT_HARD_MODE_MODIFIER))
@@ -6725,7 +6727,7 @@ s32 CalculateBaseDamage(struct BattlePokemon *attacker, struct BattlePokemon *de
         {
             spAttack = (120 * spAttack) / 100;
         }
-    }
+    }*/
         
     if (attacker->ability == ABILITY_GUTS && attacker->status1)
         attack = (150 * attack) / 100;
@@ -6914,47 +6916,6 @@ s32 CalculateBaseDamage(struct BattlePokemon *attacker, struct BattlePokemon *de
             // Moves hitting both targets do half damage in double battles
             if ((gBattleTypeFlags & BATTLE_TYPE_DOUBLE) && gBattleMoves[move].target == MOVE_TARGET_BOTH && CountAliveMonsInBattle(BATTLE_ALIVE_DEF_SIDE) == 2)
                 damage /= 2;
-
-            // Are effects of weather negated with cloud nine or air lock
-            if (WEATHER_HAS_EFFECT2)
-            {
-                // Rain weakens Fire, boosts Water
-                if (gBattleWeather & B_WEATHER_RAIN_TEMPORARY)
-                {
-                    switch (type)
-                    {
-                    case TYPE_FIRE:
-                        damage /= 2;
-                        break;
-                    case TYPE_WATER:
-                        damage = (15 * damage) / 10;
-                        break;
-                    }
-                }
-
-                // Any weather except sun weakens solar beam
-                if ((gBattleWeather & (B_WEATHER_RAIN | B_WEATHER_SANDSTORM | B_WEATHER_HAIL)) && gCurrentMove == MOVE_SOLAR_BEAM)
-                    damage /= 2;
-
-                // Sun boosts Fire, weakens Water
-                if (gBattleWeather & B_WEATHER_SUN)
-                {
-                    switch (type)
-                    {
-                    case TYPE_FIRE:
-                        damage = (15 * damage) / 10;
-                        break;
-                    case TYPE_WATER:
-                        damage /= 2;
-                        break;
-                    }
-                }
-            }
-
-            if ((gBattleResources->flags->flags[battlerIdAtk] & RESOURCE_FLAG_FLASH_FIRE) && type == TYPE_FIRE)
-                damage = (15 * damage) / 10;
-
-            return damage + 2;
         }
     }
     else if (gSaveBlock2Ptr->optionStyle == 1)
@@ -7042,6 +7003,49 @@ s32 CalculateBaseDamage(struct BattlePokemon *attacker, struct BattlePokemon *de
 
             return damage + 2;
         }
+    }
+
+    // Are effects of weather negated with cloud nine or air lock
+    if (gSaveBlock2Ptr->optionStyle == 0)
+    {
+        if (WEATHER_HAS_EFFECT2)
+        {
+            // Rain weakens Fire, boosts Water
+            if (gBattleWeather & B_WEATHER_RAIN_TEMPORARY)
+            {
+                switch (type)
+                {
+                case TYPE_FIRE:
+                    damage /= 2;
+                    break;
+                case TYPE_WATER:
+                    damage = (15 * damage) / 10;
+                    break;
+                }
+            }
+
+            // Any weather except sun weakens solar beam
+            if ((gBattleWeather & (B_WEATHER_RAIN | B_WEATHER_SANDSTORM | B_WEATHER_HAIL)) && gCurrentMove == MOVE_SOLAR_BEAM)
+                damage /= 2;
+
+            // Sun boosts Fire, weakens Water
+            if (gBattleWeather & B_WEATHER_SUN)
+            {
+                switch (type)
+                {
+                case TYPE_FIRE:
+                    damage = (15 * damage) / 10;
+                    break;
+                case TYPE_WATER:
+                    damage /= 2;
+                    break;
+                }
+            }
+        }
+        if ((gBattleResources->flags->flags[battlerIdAtk] & RESOURCE_FLAG_FLASH_FIRE) && type == TYPE_FIRE)
+            damage = (15 * damage) / 10;
+
+        return damage + 2;
     }
 }
 
@@ -8249,7 +8253,9 @@ u8 GetAbilityBySpecies(u16 species, u8 abilityNum)
             || species == SPECIES_LUGIA)
             && (gSaveBlock1Ptr->tx_Mode_Legendary_Abilities == 0))
         gLastUsedAbility = gSpeciesInfo[species].abilities_old[0];
-    else if ((abilityNum == 1) && (species == SPECIES_NOCTOWL) && (gSaveBlock1Ptr->tx_Mode_Modern_Types == 0))
+    else if ((abilityNum == 1)
+            && (species == SPECIES_NOCTOWL)
+            && (gSaveBlock1Ptr->tx_Mode_Modern_Types == 0))
         gLastUsedAbility = gSpeciesInfo[species].abilities_old[1];
     else if (abilityNum)
         gLastUsedAbility = gSpeciesInfo[species].abilities[1];
