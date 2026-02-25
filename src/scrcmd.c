@@ -1676,10 +1676,20 @@ bool8 ScrCmd_showmonpic(struct ScriptContext *ctx)
             flagShinyStarter = FLAG_SHINY_STARTER_3;
         }
 
+        #ifndef NDEBUG
+            MgbaPrintf(MGBA_LOG_DEBUG, "******** Possible Temp Flags: %x, %x, %x ********", FLAG_TEMP_1, FLAG_TEMP_2, FLAG_TEMP_3);
+            MgbaPrintf(MGBA_LOG_DEBUG, "******** Possible Shiny Starter Flags: %x, %x, %x ********", FLAG_SHINY_STARTER_1, FLAG_SHINY_STARTER_2, FLAG_SHINY_STARTER_3);
+            MgbaPrintf(MGBA_LOG_DEBUG, "******** Actual Temp and Shiny Flags: %x, %x ********", flagTemp, flagShinyStarter);
+        #endif
+
         // if FLAG_TEMP_X not set for this starter preview, roll for shininess,
         // then set FLAG_TEMP_X to prevent re-rolls
         if (!FlagGet(flagTemp))
         {
+            #ifndef NDEBUG
+                MgbaPrintf(MGBA_LOG_DEBUG, "******** Rolling Shininess ********");
+            #endif
+
             if ((Random32() % 65536) < shinyChance)
                 FlagSet(flagShinyStarter);
 
@@ -1687,6 +1697,10 @@ bool8 ScrCmd_showmonpic(struct ScriptContext *ctx)
         }
 
         shinyStarter = FlagGet(flagShinyStarter);
+
+        #ifndef NDEBUG
+            MgbaPrintf(MGBA_LOG_DEBUG, "******** Should be Shiny: %d ********", shinyStarter);
+        #endif
 
         // Needed for starter randomization
         if (((gSaveBlock1Ptr->tx_Random_Starter) == 1) || IsOneTypeChallengeActive())
