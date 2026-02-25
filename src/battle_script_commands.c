@@ -66,9 +66,9 @@
 // This occurred because the yield given by the Exp All was not *distributed across* the party,
 //   but simply *given*, undivided, effectively multiplying the effective yield of the Exp All by the number of recipients.
 #ifndef EXPALL_TUNING
-#define EXPALL_SHARE_NUM          7     // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
-#define EXPALL_SHARE_DEN          25    // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
-#define EXPALL_PARTICIPANT_NUM    2     // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
+#define EXPALL_SHARE_NUM          2     // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
+#define EXPALL_SHARE_DEN          3    // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
+#define EXPALL_PARTICIPANT_NUM    1     // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
 #define EXPALL_PARTICIPANT_DEN    3
 #else
 // If EXPALL_TUNING was defined elsewhere, use official game Exp All calculations
@@ -3863,7 +3863,7 @@ static void Cmd_getexp(void)
             {
                 // Total Exp Yield of the defeated Mon
                 calculatedExp = gSpeciesInfo[gBattleMons[gBattlerFainted].species].expYield * gBattleMons[gBattlerFainted].level / 7;
-                // calculatedExp *= 2; // Exp All 1.2.1 more than doubled total Exp Yield on average
+                calculatedExp *= 2; // Exp All 1.2.1 more than doubled total Exp Yield on average
 
                 #ifndef NDEBUG
                 MgbaPrintf(MGBA_LOG_DEBUG, "******** Cmd_getexp Original calculatedExp %d ********", calculatedExp);
@@ -3930,9 +3930,6 @@ static void Cmd_getexp(void)
                         // Other two-thirds of total Exp yield distributed evenly across all Mons receiving from Exp All
                         recipientNumerator = EXPALL_SHARE_NUM;
                         recipientDenominator = EXPALL_SHARE_DEN;
-
-                        // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
-                        gExpShareExp = SAFE_DIV(calculatedExp * recipientNumerator, recipientDenominator);
                     }
                     else
                     {
@@ -3942,9 +3939,6 @@ static void Cmd_getexp(void)
                         // Other half of total Exp yield distributed evenly across all Mons holding Exp Share
                         recipientNumerator = 1;
                         recipientDenominator = 2;
-
-                        // temp for 1.2.2 playtest until final version decided on - emulate 1.2.1 functionality
-                        gExpShareExp = SAFE_DIV(calculatedExp * recipientNumerator, viaExpShare * recipientDenominator);
                     } 
                 }
                     
@@ -3956,6 +3950,7 @@ static void Cmd_getexp(void)
                 MgbaPrintf(MGBA_LOG_DEBUG, "******** Cmd_getexp Exp per participant %d ********", *exp);
                 #endif
 
+                gExpShareExp = SAFE_DIV(calculatedExp * recipientNumerator, viaExpShare * recipientDenominator);
                 if (gExpShareExp == 0 && viaExpShare)
                     gExpShareExp = 1;
 
