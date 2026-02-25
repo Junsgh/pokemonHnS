@@ -31,6 +31,7 @@ EventScript_ObtainItemMessage::
 	call EventScript_BufferPocketNameAndTryFanfare
 	call_if_ne VAR_0x8007, FALSE, EventScript_ObtainedItem
 	call_if_eq VAR_0x8007, FALSE, EventScript_NoRoomForItem
+	waitfanfare
 	return
 
 EventScript_BufferPocketNameAndTryFanfare::
@@ -80,12 +81,10 @@ EventScript_NoRoomForItem::
 
 EventScript_PlayFanfareObtainedItem::
 	playfanfare MUS_OBTAIN_ITEM
-	waitfanfare
 	return
 
 EventScript_PlayFanfareObtainedTMHM::
 	playfanfare MUS_OBTAIN_TMHM
-	waitfanfare
 	return
 
 Std_ObtainDecoration::
@@ -128,6 +127,7 @@ Std_FindItem::
 	call EventScript_BufferPocketNameAndTryFanfare
 	call_if_ne VAR_0x8007, FALSE, EventScript_PickUpItem
 	call_if_eq VAR_0x8007, FALSE, EventScript_NoRoomToPickUpItem
+	waitfanfare
 	release
 	return
 
@@ -195,6 +195,7 @@ EventScript_HiddenItemScript::
 	call EventScript_BufferPocketNameAndTryFanfare
 	goto_if_ne VAR_0x8007, FALSE, EventScript_PickUpHiddenItem
 	goto_if_eq VAR_0x8007, FALSE, EventScript_NoRoomForHiddenItem
+	waitfanfare
 	end
 
 Std_RandomItemHidden::
