@@ -949,7 +949,7 @@ u8 CreateShinyMonSprite_PicBox(u16 species, s16 x, s16 y, u8 subpriority)
 {
     // Force a shiny personality: hi=0x0000, lo=0x0000 -> xor = 0x0000
     // With otId=0, (otHi ^ otLo ^ pidHi ^ pidLo) == 0x0000, which will always be < any SHINY_ODDS.
-    const u32 SHINY_PIC_PERSONALITY = 0x0000000u;
+    const u32 SHINY_PIC_PERSONALITY = 0x0000001u;
     return CreateMonSprite_FieldMove(species, /*otId=*/0, SHINY_PIC_PERSONALITY, x, y, subpriority);
 }
 
