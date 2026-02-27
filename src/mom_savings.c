@@ -23,6 +23,7 @@
 #include "fieldmap.h"
 #include "constants/map_types.h"
 #include "decoration_inventory.h"
+#include "tx_randomizer_and_challenges.h"
 
 extern const u8 EventScript_MomGiftCall_Item[];
 extern const u8 EventScript_MomGiftCall_Berry[];
@@ -202,8 +203,7 @@ bool8 Mom_CheckForGiftPurchase(u32 newBalance, u32 oldBalance, bool8 isAutomatic
     // This prevents the new gift from overwriting the pending one
     if (FlagGet(FLAG_MOM_HAS_GIFT))
         return FALSE;
-    
-    // Try sequential gifts first
+
     // Sequential gifts are one-time purchases at specific thresholds
     if (Mom_CheckSequentialGifts(newBalance, &purchasedItem))
     {
@@ -240,6 +240,12 @@ bool8 Mom_CheckForGiftPurchase(u32 newBalance, u32 oldBalance, bool8 isAutomatic
                     break;
                 }
             }
+            
+            // Randomize item if random items challenge is active and it's not a decoration
+            if (!isDecoration && IsRandomItemsActivated())
+            {
+                purchasedItem = RandomItemId(purchasedItem);
+            }
         }
         
         quantity = 1;
@@ -259,6 +265,12 @@ bool8 Mom_CheckForGiftPurchase(u32 newBalance, u32 oldBalance, bool8 isAutomatic
     // BUT only from automatic battle savings, not manual deposits
     if (isAutomatic && Mom_CheckRandomBerries(newBalance, oldBalance, &purchasedItem))
     {
+        // Randomize berry if random items challenge is active
+        if (IsRandomItemsActivated())
+        {
+            purchasedItem = RandomItemId(purchasedItem);
+        }
+        
         quantity = MOM_BERRY_QUANTITY;
         Mom_AddItemToPC(purchasedItem, quantity, FALSE);
         
