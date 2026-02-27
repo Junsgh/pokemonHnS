@@ -609,6 +609,16 @@ RuinsOfAlph_Lab_EventScript_WorkOnNext::
 	release
 	end
 
+RuinsOfAlph_Lab_EventScript_PC::
+	goto_if_eq VAR_FACING, DIR_SOUTH, RuinsOfAlph_Lab_EventScript_NoPCFromAbove
+	call EventScript_FakePC
+	release
+	end
+
+RuinsOfAlph_Lab_EventScript_NoPCFromAbove::
+	release
+	end
+
 RuinsOfAlph_Lab_Text_DeviceForTalkingToPokemon:
 	.string "We're developing a device for talking\n"
 	.string "with POKéMON.\p"
