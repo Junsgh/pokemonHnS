@@ -272,7 +272,9 @@
 #define VAR_UNUSED_0x40FC                                0x40FC // Unused Var
 #define VAR_SURF_MON_SLOT                                0x40FD // Added new VAR for Surfing Overworld Sprites - Holds Surfing Party Mon index
 #define VAR_FREEZE_SURF_BLOB                             0x40FE // Added new VAR for Surfing Overworld Sprites - Set on surf init to stop blob overlay being offset incorrectly
-#define VAR_GARBAGEVAR                                0x40FF // Used to replace little root state
+#define VAR_GARBAGEVAR                                   0x40FF // Used to replace little root state
+#define VAR_FLIP_LEVEL                                   VAR_TEMP_4 // Used to track the level of Voltorb Flip
+#define VAR_FLIP_WINNINGS                                VAR_TEMP_5 // Used to track the winnings of Voltorb Flip
 
 #define VARS_END                                         0x40FF
 #define VARS_COUNT                                       (VARS_END - VARS_START + 1)

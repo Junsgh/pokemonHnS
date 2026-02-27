@@ -588,3 +588,4 @@ gSpecials::
 	def_special NameRival
 	def_special IsRandomMovesActivated 			@ tx_randomizer_and_challenges
 	def_special ToggleShinyColors
+	def_special Special_ViewVoltorbFlip			@ rogue_voltorbflip

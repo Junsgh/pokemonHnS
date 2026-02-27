@@ -267,6 +267,93 @@ GoldenrodCity_GameCorner_EventScript_Pharmacist::
 	release
 	end
 
+@ ========================================
+@ VOLTORB FLIP GAME IMPLEMENTATION
+@ ========================================
+
+GoldenrodCity_GameCorner_EventScript_VoltorbFlip::
+	lockall
+	checkitem ITEM_COIN_CASE
+	goto_if_eq VAR_RESULT, FALSE, GoldenrodCity_GameCorner_PrizeRoom_EventScript_NeedCoinCase
+	checkcoins VAR_RESULT
+	goto_if_lt VAR_RESULT, 50, GoldenrodCity_GameCorner_EventScript_VF_Not_Enough
+	showcoinsbox 1, 1
+	msgbox GoldenrodCity_GameCorner_Text_VF, MSGBOX_YESNO
+	closemessage
+	goto_if_eq VAR_RESULT, NO, GoldenrodCity_GameCorner_EventScript_VF_Cancel
+	removecoins 50
+	updatecoinsbox 1, 1
+	playse SE_SHOP
+	delay 40
+	hidecoinsbox 0, 5
+	playbgm MUS_RG_OAK, FALSE
+	setvar VAR_FLIP_WINNINGS, 0
+	special Special_ViewVoltorbFlip
+	waitstate
+	goto_if_eq VAR_RESULT, 0, GoldenrodCity_GameCorner_EventScript_VF_Come_Again
+	goto_if_eq VAR_RESULT, 1, GoldenrodCity_GameCorner_EventScript_VF_Go_On
+	releaseall
+	end
+
+GoldenrodCity_GameCorner_EventScript_VF_Not_Enough::
+	msgbox GoldenrodCity_GameCorner_Text_VF_Not_Enough, MSGBOX_DEFAULT
+	releaseall
+	end
+
+GoldenrodCity_GameCorner_EventScript_VF_Come_Again::
+	savebgm MUS_DUMMY
+	fadedefaultbgm
+	msgbox GoldenrodCity_GameCorner_Text_VF_Come_Again, MSGBOX_DEFAULT
+	setvar VAR_FLIP_WINNINGS, 0
+	releaseall
+	end
+
+GoldenrodCity_GameCorner_EventScript_VF_Go_On::
+	showcoinsbox 1, 1
+	buffernumberstring STR_VAR_1, VAR_FLIP_WINNINGS
+	msgbox GoldenrodCity_GameCorner_Text_VF_Keep_Going, MSGBOX_YESNO
+	closemessage
+	goto_if_eq VAR_RESULT, NO, GoldenrodCity_GameCorner_EventScript_VF_Cash_Out
+	goto GoldenrodCity_GameCorner_EventScript_VF_Loop
+
+GoldenrodCity_GameCorner_EventScript_VF_Loop::
+	hidecoinsbox 0, 5
+	special Special_ViewVoltorbFlip
+	waitstate
+	goto_if_eq VAR_RESULT, 0, GoldenrodCity_GameCorner_EventScript_VF_Come_Again
+	goto_if_eq VAR_RESULT, 1, GoldenrodCity_GameCorner_EventScript_VF_Go_On
+	releaseall
+	end
+
+GoldenrodCity_GameCorner_EventScript_VF_Cash_Out::
+	addcoins VAR_FLIP_WINNINGS
+	setvar VAR_FLIP_WINNINGS, 0
+	setvar VAR_FLIP_LEVEL, 0
+	updatecoinsbox 1, 1
+	playse SE_SHOP
+	savebgm MUS_DUMMY
+	fadedefaultbgm
+	delay 40
+	goto GoldenrodCity_GameCorner_EventScript_VF_Cancel
+	end
+
+GoldenrodCity_GameCorner_EventScript_VF_Cancel::
+	hidecoinsbox 0, 5
+	releaseall
+	end
+
+GoldenrodCity_GameCorner_EventScript_VFAttendant1::
+	msgbox GoldenrodCity_GameCorner_Text_VFAttendant1, MSGBOX_NPC
+	end
+
+GoldenrodCity_GameCorner_EventScript_VFAttendant2::
+	msgbox GoldenrodCity_GameCorner_Text_VFAttendant2, MSGBOX_NPC
+	end
+
+@ ========================================
+@ TEXT STRINGS
+@ ========================================
+
 GoldenrodCity_GameCorner_PrizeRoom_Text_YouWantPrize:
 	.string "{STR_VAR_1} is what you want?$"
 
@@ -337,3 +424,30 @@ GoldenrodCity_GameCorner_Text_MoveTutorInside:
 GoldenrodCity_GameCorner_Text_LeftTheirDrink:
     .string "Someone left their drink.\p"
     .string "It smells sweet.$"
+
+@ Voltorb Flip Text Strings
+GoldenrodCity_GameCorner_Text_VF:
+	.string "It's VOLTORB FLIP!\n"
+	.string "It costs 50 COINS to play.$"
+
+GoldenrodCity_GameCorner_Text_VF_Not_Enough:
+	.string "It's VOLTORB FLIP!\p"
+	.string "You don't have enough COINS…$"
+
+GoldenrodCity_GameCorner_Text_VF_Come_Again:
+	.string "Too bad.\n"
+	.string "Try again soon!$"
+
+GoldenrodCity_GameCorner_Text_VF_Keep_Going:
+	.string "You've made {STR_VAR_1} COINS.\n"
+	.string "Keep going?$"
+
+@ Voltorb Flip Attendant Texts
+GoldenrodCity_GameCorner_Text_VFAttendant1:
+	.string "You want to play VOLTORB FLIP?\p"
+	.string "You need to be on the other\n"
+	.string "side of the table.$"
+
+GoldenrodCity_GameCorner_Text_VFAttendant2:
+	.string "Try the other side of\n"
+	.string "the table, pal.$"

@@ -71,6 +71,7 @@
 #include "constants/rgb.h"
 #include "constants/abilities.h"
 #include "constants/rgb.h"
+#include "rogue_voltorbflip.h"
 
 #define TAG_ITEM_ICON 5500
 
@@ -1332,6 +1333,13 @@ u16 GetSlotMachineId(void)
         return sSlotMachineServiceDayIds[rnd % SLOT_MACHINE_COUNT];
 
     return sSlotMachineIds[rnd % SLOT_MACHINE_COUNT];
+}
+
+void Special_ViewVoltorbFlip(void)
+{
+    gMain.savedCallback = CB2_ReturnToField;
+    SetMainCallback2(CB2_ShowVoltorbFlip);
+    LockPlayerFieldControls();
 }
 
 bool8 FoundAbandonedShipRoom1Key(void)
