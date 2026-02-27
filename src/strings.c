@@ -198,6 +198,7 @@ const u8 gText_EmptyString2[] = _("");
 const u8 gText_Cancel7[] = _("CANCEL"); // Unused
 const u8 gText_Item[] = _("ITEM");
 const u8 gText_FieldMoves[] = _("FIELD MOVES");
+const u8 gText_UseMove[] = _("Use which move?");
 const u8 gText_Restore[] = _("RESTORE");
 const u8 gText_Mail[] = _("MAIL");
 const u8 gText_Take[] = _("TAKE");

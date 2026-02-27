@@ -2558,6 +2558,7 @@ void DisplayPartyMenuStdMessage(u32 stringId)
             break;
         case PARTY_MSG_RESTORE_WHICH_MOVE:
         case PARTY_MSG_BOOST_PP_WHICH_MOVE:
+        case PARTY_MSG_USE_WHICH_MOVE:
             *windowPtr = AddWindow(&sWhichMoveMsgWindowTemplate);
             break;
         case PARTY_MSG_ALREADY_HOLDING_ONE:
@@ -2617,7 +2618,7 @@ static u8 DisplaySelectionWindow(u8 windowType)
         SetWindowTemplateFields(&window, 2, 19, 19 - (sPartyMenuInternal->numActions * 2), 10, sPartyMenuInternal->numActions * 2, 14, 0x2E9);
         break;
     case SELECTWINDOW_FIELD_MOVES:
-        SetWindowTemplateFields(&window, 2, 19, 19 - (sPartyMenuInternal->numActions * 2), 10, sPartyMenuInternal->numActions * 2, 14, 0x2E9);
+        SetWindowTemplateFields(&window, 2, 19, 19 - (sPartyMenuInternal->numActions * 2), 10, sPartyMenuInternal->numActions * 2, 14, 0x39D);
         break;
     case SELECTWINDOW_ITEM:
         window = sItemGiveTakeWindowTemplate;
@@ -3912,16 +3913,13 @@ static void Task_HandleLoseMailMessageYesNoInput(u8 taskId)
     }
 }
 
-static void Task_ReturnToActionsMenu(u8 taskId)
+static void CursorCb_Cancel2(u8 taskId)
 {
     struct Pokemon *mon = &gPlayerParty[gPartyMenu.slotId];
-    
-    // Wait one frame to ensure previous window is fully cleared
-    if (gTasks[taskId].data[15] == 0)
-    {
-        gTasks[taskId].data[15]++;
-        return;
-    }
+
+    PlaySE(SE_SELECT);
+    PartyMenuRemoveWindow(&sPartyMenuInternal->windowId[0]);
+    PartyMenuRemoveWindow(&sPartyMenuInternal->windowId[1]);
     
     SetPartyMonSelectionActions(gPlayerParty, gPartyMenu.slotId, GetPartyMenuActionsType(mon));
     if (gPartyMenu.menuType != PARTY_MENU_TYPE_STORE_PYRAMID_HELD_ITEMS)
@@ -3936,54 +3934,7 @@ static void Task_ReturnToActionsMenu(u8 taskId)
         DisplayPartyMenuStdMessage(PARTY_MSG_ALREADY_HOLDING_ONE);
     }
     gTasks[taskId].data[0] = 0xFF;
-    gTasks[taskId].data[15] = 0; // Reset for potential future use
     gTasks[taskId].func = Task_HandleSelectionMenuInput;
-}
-
-static void CursorCb_Cancel2(u8 taskId)
-{
-    struct Pokemon *mon = &gPlayerParty[gPartyMenu.slotId];
-    bool8 fromFieldMovesSubmenu = FALSE;
-    u8 i;
-
-    // Check if we're coming from field moves submenu by looking for field move actions
-    for (i = 0; i < sPartyMenuInternal->numActions; i++)
-    {
-        if (sPartyMenuInternal->actions[i] >= MENU_FIELD_MOVES && sPartyMenuInternal->actions[i] < MENU_FIELD_MOVES + FIELD_MOVES_COUNT)
-        {
-            fromFieldMovesSubmenu = TRUE;
-            break;
-        }
-    }
-
-    PlaySE(SE_SELECT);
-    PartyMenuRemoveWindow(&sPartyMenuInternal->windowId[0]);
-    PartyMenuRemoveWindow(&sPartyMenuInternal->windowId[1]);
-    
-    // Field moves submenu needs delay due to dynamic sizing at same position
-    if (fromFieldMovesSubmenu)
-    {
-        gTasks[taskId].data[15] = 0;
-        gTasks[taskId].func = Task_ReturnToActionsMenu;
-    }
-    else
-    {
-        // Item/Mail submenus can transition immediately (different position)
-        SetPartyMonSelectionActions(gPlayerParty, gPartyMenu.slotId, GetPartyMenuActionsType(mon));
-        if (gPartyMenu.menuType != PARTY_MENU_TYPE_STORE_PYRAMID_HELD_ITEMS)
-        {
-            DisplaySelectionWindow(SELECTWINDOW_ACTIONS);
-            DisplayPartyMenuStdMessage(PARTY_MSG_DO_WHAT_WITH_MON);
-        }
-        else
-        {
-            DisplaySelectionWindow(SELECTWINDOW_ITEM);
-            CopyItemName(GetMonData(mon, MON_DATA_HELD_ITEM), gStringVar2);
-            DisplayPartyMenuStdMessage(PARTY_MSG_ALREADY_HOLDING_ONE);
-        }
-        gTasks[taskId].data[0] = 0xFF;
-        gTasks[taskId].func = Task_HandleSelectionMenuInput;
-    }
 }
 
 
@@ -4183,33 +4134,16 @@ static void Task_HandleSpinTradeYesNoInput(u8 taskId)
         break;
     }
 }
-
-static void Task_DisplayFieldMovesMenu(u8 taskId)
-{
-    // Wait one frame to ensure previous window is fully cleared
-    if (gTasks[taskId].data[15] == 0)
-    {
-        gTasks[taskId].data[15]++;
-        return;
-    }
-    
-    SetPartyMonSelectionActions(gPlayerParty, gPartyMenu.slotId, ACTIONS_FIELD_MOVES);
-    DisplaySelectionWindow(SELECTWINDOW_FIELD_MOVES);
-    DisplayPartyMenuStdMessage(PARTY_MSG_DO_WHAT_WITH_MON);
-    gTasks[taskId].data[0] = 0xFF;
-    gTasks[taskId].data[15] = 0; // Reset for potential future use
-    gTasks[taskId].func = Task_HandleSelectionMenuInput;
-}
-
 static void CursorCb_FieldMovesSubmenu(u8 taskId)
 {
     PlaySE(SE_SELECT);
     PartyMenuRemoveWindow(&sPartyMenuInternal->windowId[0]);
     PartyMenuRemoveWindow(&sPartyMenuInternal->windowId[1]);
-    
-    // Wait one frame before displaying the new menu to ensure old content is cleared
-    gTasks[taskId].data[15] = 0;
-    gTasks[taskId].func = Task_DisplayFieldMovesMenu;
+    SetPartyMonSelectionActions(gPlayerParty, gPartyMenu.slotId, ACTIONS_FIELD_MOVES);
+    DisplaySelectionWindow(SELECTWINDOW_FIELD_MOVES);
+    DisplayPartyMenuStdMessage(PARTY_MSG_USE_WHICH_MOVE);
+    gTasks[taskId].data[0] = 0xFF;
+    gTasks[taskId].func = Task_HandleSelectionMenuInput;
 }
 
 
