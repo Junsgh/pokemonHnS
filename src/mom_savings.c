@@ -260,17 +260,11 @@ bool8 Mom_CheckForGiftPurchase(u32 newBalance, u32 oldBalance, bool8 isAutomatic
         return TRUE;
     }
     
-    // If no sequential items triggered, try random berries
+    // If no sequential items triggered, try random kurt berries
     // Berry gifts are recurring purchases at multiples of the threshold
     // BUT only from automatic battle savings, not manual deposits
     if (isAutomatic && Mom_CheckRandomBerries(newBalance, oldBalance, &purchasedItem))
     {
-        // Randomize berry if random items challenge is active
-        if (IsRandomItemsActivated())
-        {
-            purchasedItem = RandomItemId(purchasedItem);
-        }
-        
         quantity = MOM_BERRY_QUANTITY;
         Mom_AddItemToPC(purchasedItem, quantity, FALSE);
         
