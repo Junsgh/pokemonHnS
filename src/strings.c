@@ -414,6 +414,7 @@ const u8 *const gBagMenu_ReturnToStrings[] =
     [ITEMMENULOCATION_FIELD]               = gText_TheField,
     [ITEMMENULOCATION_BATTLE]              = gText_TheBattle,
     [ITEMMENULOCATION_PARTY]               = gText_ThePokemonList,
+    [ITEMMENULOCATION_PARTYUSE]            = gText_ThePokemonList,
     [ITEMMENULOCATION_SHOP]                = gText_TheShop,
     [ITEMMENULOCATION_BERRY_TREE]          = gText_TheField,
     [ITEMMENULOCATION_BERRY_BLENDER_CRUSH] = gText_TheField,

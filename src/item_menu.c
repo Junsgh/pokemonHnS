@@ -214,6 +214,7 @@ static void ItemMenu_GiveFavorLady(u8);
 static void ItemMenu_ConfirmQuizLady(u8);
 static void Task_ItemContext_Normal(u8);
 static void Task_ItemContext_GiveToParty(u8);
+static void Task_ItemContext_UseOnParty(u8);
 static void Task_ItemContext_Sell(u8);
 static void Task_ItemContext_Deposit(u8);
 static void Task_ItemContext_GiveToPC(u8);
@@ -387,6 +388,7 @@ static const TaskFunc sContextMenuFuncs[] = {
     [ITEMMENULOCATION_FIELD] =                  Task_ItemContext_Normal,
     [ITEMMENULOCATION_BATTLE] =                 Task_ItemContext_Normal,
     [ITEMMENULOCATION_PARTY] =                  Task_ItemContext_GiveToParty,
+    [ITEMMENULOCATION_PARTYUSE] =               Task_ItemContext_UseOnParty,
     [ITEMMENULOCATION_SHOP] =                   Task_ItemContext_Sell,
     [ITEMMENULOCATION_BERRY_TREE] =             Task_FadeAndCloseBagMenu,
     [ITEMMENULOCATION_BERRY_BLENDER_CRUSH] =    Task_ItemContext_Normal,
@@ -2172,6 +2174,24 @@ static void Task_ItemContext_GiveToParty(u8 taskId)
     else
     {
         PrintItemCantBeHeld(taskId);
+    }
+}
+
+// Selected item to use on a Pokémon in the party menu
+static void Task_ItemContext_UseOnParty(u8 taskId)
+{
+    u16 itemId = gSpecialVar_ItemId;
+    
+    // Allow any item that can be used in party menu context
+    // This includes medicine, TMs/HMs, evolution stones, PP items, rare candies, etc.
+    if (ItemId_GetFieldFunc(itemId) != NULL)
+    {
+        Task_FadeAndCloseBagMenu(taskId);
+    }
+    else
+    {
+        // Item can't be used
+        DisplayItemMessage(taskId, FONT_NORMAL, gText_CantUseUntilNewBadge, HandleErrorMessage);
     }
 }
 
