@@ -6073,10 +6073,12 @@ static void Task_SacredAshLoop(u8 taskId)
                 gPartyMenuUseExitCallback = TRUE;
                 RemoveBagItem(gSpecialVar_ItemId, 1);
             }
-            if (gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD && CheckBagHasItem(gSpecialVar_ItemId, 1))
-                gTasks[taskId].func = Task_ReturnToChooseMonAfterText;
-            else
+            // When used from bag (PARTY_ACTION_USE_ITEM), close and return to bag
+            // When used from party menu ITEM->USE, return to party menu
+            if (gPartyMenu.action == PARTY_ACTION_USE_ITEM)
                 gTasks[taskId].func = Task_ClosePartyMenuAfterText;
+            else
+                gTasks[taskId].func = Task_ReturnToChooseMonAfterText;
             gPartyMenu.slotId = 0;
         }
         else
