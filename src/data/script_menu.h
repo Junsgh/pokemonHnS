@@ -922,6 +922,15 @@ static const struct MenuAction MultichoiceList_Exit[] =
     {gText_Exit},
 };
 
+static const struct MenuAction MultichoiceList_MomMenu[] =
+{
+    {gText_CheckSavings},
+    {gText_Deposit},
+    {gText_Withdraw},
+    {gText_SavingOption},
+    {gText_Cancel2},
+};
+
 struct MultichoiceListStruct
 {
     const struct MenuAction *list;
@@ -1059,6 +1068,7 @@ static const struct MultichoiceListStruct sMultichoiceLists[] =
     [MULTI_ELDERQUIIZ5]                 = MULTICHOICE(MultichoiceList_ElderQuiz5),
     [MULTI_HOENN_STARTERS]              = MULTICHOICE(MultichoiceList_HoennStarters),
     [MULTI_5FLOORS]                    = MULTICHOICE(MultichoiceList_5Floors),
+    [MULTI_MOM_MENU]                    = MULTICHOICE(MultichoiceList_MomMenu),
 
 };
 

@@ -6459,7 +6459,19 @@ static void Cmd_getmoneyreward(void)
         if (gBattleTypeFlags & BATTLE_TYPE_TWO_OPPONENTS)
             money += GetTrainerMoneyToGive(gTrainerBattleOpponent_B);
         AddMoney(&gSaveBlock1Ptr->money, money);
+        if (Mom_IsSavingEnabled())
+        {
+            u32 depositAmount = money / 4;  // 25% of earnings
+            RemoveMoney(&gSaveBlock1Ptr->money, depositAmount);
+            Mom_TryDepositMoney(depositAmount);
+            gBattleCommunication[MULTISTRING_CHOOSER] = 1;
+        }
+        else
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = 0;
+        }
     }
+
 		else
 		{
 				s32 i, count;

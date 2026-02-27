@@ -781,6 +781,8 @@ const u8 gText_BagIsFull[] = _("The BAG is full.{PAUSE_UNTIL_PRESS}");
 const u8 gText_MailToBagMessageErased[] = _("The MAIL was returned to the BAG\nwith its message erased.{PAUSE_UNTIL_PRESS}");
 const u8 gText_Dad[] = _("DAD");
 const u8 gText_Mom[] = _("MOM");
+const u8 gText_MomHowMuchDeposit[] = _("How much would you like to\ndeposit with your MOM?");
+const u8 gText_MomHowMuchWithdraw[] = _("How much would you like to\nwithdraw from your MOM?");
 const u8 gText_Wallace[] = _("WALLACE");
 const u8 gText_Steven[] = _("STEVEN");
 const u8 gText_Brawly[] = _("BRAWLY");
@@ -2227,3 +2229,8 @@ const u8 gText_FORMS_Buttons_Submenu_PE[]           = _("{DPAD_NONE}FORMs {A_BUT
 const u8 gText_FORMS_Buttons_Submenu_Decapped_PE[]  = _("{START_BUTTON}Evos");
 const u8 gText_FORMS_NONE[]                         = _("{STR_VAR_1} has no alternate forms.");
 const u8 gText_Var1DotVar2_Metric[]                 = _("{STR_VAR_1}.{STR_VAR_2}cm");
+
+const u8 gText_CheckSavings[] = _("CHECK SAVINGS");
+const u8 gText_Deposit[] = _("DEPOSIT");
+const u8 gText_Withdraw[] = _("WITHDRAW");
+const u8 gText_SavingOption[] = _("TOGGLE SAVINGS");

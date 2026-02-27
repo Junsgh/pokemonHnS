@@ -46,6 +46,7 @@
 #include "union_room_chat.h"
 #include "constants/items.h"
 #include "tx_randomizer_and_challenges.h"
+#include "mom_savings.h"
 
 extern const u8 EventScript_ResetAllMapFlags[];
 
@@ -243,6 +244,7 @@ void NewGameInitData(void)
     ResetTrainerHillResults();
     ResetContestLinkResults();
     RandomizeTypeEffectivenessListEWRAM(Random32());
+    InitMomSavings();
 
     //Below is unused, but set just in case. Easy Mode nuzlocke and Normal Mode nuzlocke can't be on together. 
     //Hard Mode nuzlocke forces Normal Mode nuzlocke too, so no need to check.

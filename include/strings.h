@@ -25,6 +25,8 @@ extern const u8 gText_Lv50[];
 extern const u8 gText_OpenLevel[];
 
 extern const u8 gText_Mom[];
+extern const u8 gText_MomHowMuchDeposit[];
+extern const u8 gText_MomHowMuchWithdraw[];
 extern const u8 gText_Dad[];
 
 extern const u8 gText_GetsAPokeBlockQuestion[];
@@ -367,6 +369,7 @@ extern const u8 gText_Birch_Challenge[];
 extern const u8 gText_Birch_WhatsYourName[];
 extern const u8 gText_Birch_SoItsPlayer[];
 extern const u8 gText_Birch_YourePlayer[];
+extern const u8 gText_Birch_ChallengesSoundRight[];
 extern const u8 gText_Birch_AreYouReady[];
 extern const u8 gText_ContinueMenuPlayer[];
 extern const u8 gText_ContinueMenuTime[];
@@ -3293,5 +3296,11 @@ extern const u8 gText_BattleRules_NoItems_Player[];
 extern const u8 gText_UnitSystemMetric[];   //tx_optionsPlus
 extern const u8 gText_UnitSystemImperial[]; //tx_optionsPlus
 extern const u8 gText_Var1DotVar2_Metric[];
+
+// Mom's Savings
+extern const u8 gText_CheckSavings[];
+extern const u8 gText_Deposit[];
+extern const u8 gText_Withdraw[];
+extern const u8 gText_SavingOption[];
 
 #endif // GUARD_STRINGS_H

@@ -586,6 +586,8 @@ static bool8 TryStartStepBasedScript(struct MapPosition *position, u16 metatileB
         return TRUE;
     if (UpdateRepelCounter() == TRUE)
         return TRUE;
+    if (Mom_TryTriggerGiftCall() == TRUE)
+        return TRUE;
     return FALSE;
 }
 

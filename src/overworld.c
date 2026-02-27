@@ -1423,7 +1423,11 @@ void TryFadeOutOldMapMusic(void)
             && sWarpDestination.mapGroup == MAP_GROUP(SOOTOPOLIS_CITY)
             && sWarpDestination.mapNum == MAP_NUM(SOOTOPOLIS_CITY)
             && sWarpDestination.x == 29
-            && sWarpDestination.y == 53))
+            && sWarpDestination.y == 53)
+            || (currentMusic == MUS_HG_ROCKET_TAKEOVER
+            && sWarpDestination.mapGroup == MAP_GROUP(GOLDENROD_CITY_UNDERGROUND_TUNNEL)
+            && sWarpDestination.mapNum == MAP_NUM(GOLDENROD_CITY_UNDERGROUND_TUNNEL)
+            && sWarpDestination.warpId == 2))
             return;
         FadeOutMapMusic(GetMapMusicFadeoutSpeed());
     }

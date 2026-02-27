@@ -50,8 +50,7 @@ gText_Birch_Challenge::
 	.string "Oh, is that so?\p"
 	.string "All right, with that clear…\n"
 	.string "Do you expect any CHALLENGES\l"
-	.string "in your journey?\p"
-	.string "And what's your name?$"
+	.string "in your journey?$"
 
 gText_Birch_WhatsYourName::
 	.string "Now, what did you say your name.\n"
@@ -59,6 +58,10 @@ gText_Birch_WhatsYourName::
 
 gText_Birch_SoItsPlayer::
 	.string "Oh! So you're {PLAYER}{KUN}?$"
+
+gText_Birch_ChallengesSoundRight::
+	.string "That sounds like the right\n"
+	.string "level of CHALLENGE to me!$" 
 
 gText_Birch_YourePlayer::
 	.string "{PLAYER}{KUN}, are you ready?\p"
