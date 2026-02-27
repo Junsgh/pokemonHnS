@@ -1311,6 +1311,7 @@ const u8 gText_NoSaveFileCantSetTime[] = _("There is no save file, so the time\n
 const u8 gText_InGameClockUsable[] = _("The in-game clock adjustment system\nis now useable.");
 const u8 gText_Slots[] = _("SLOTS");
 const u8 gText_Roulette[] = _("ROULETTE");
+const u8 gText_Level2[] = _("Lv."); // voltorb flip version of level text, used in the level display window
 const u8 gText_Good[] = _("Good");
 const u8 gText_VeryGood[] = _("Very good");
 const u8 gText_Excellent[] = _("Excellent");

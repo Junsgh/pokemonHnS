@@ -103,6 +103,7 @@ extern const u8 Roulette_Text_NotEnoughCoins[];
 
 extern const u8 gText_Slots[];
 extern const u8 gText_Roulette[];
+extern const u8 gText_Level2[];
 extern const u8 gText_Jackpot[];
 
 extern const u8 gText_YouDontHaveThreeCoins[];
