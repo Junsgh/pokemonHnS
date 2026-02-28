@@ -184,6 +184,7 @@ extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_BigVenusaur
 extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_BigCharizardDoll;
 extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_BigBlastoiseDoll;
 extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_BigWailmerDoll;
+extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_KurtLyingDown;
 extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_BigRegirockDoll;
 extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_BigRegiceDoll;
 extern const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_BigRegisteelDoll;
@@ -439,7 +440,8 @@ const struct ObjectEventGraphicsInfo *const gObjectEventGraphicsInfoPointers[NUM
     // [OBJ_EVENT_GFX_ROUND_CUSHION] =            &gObjectEventGraphicsInfo_RoundCushion,
     [OBJ_EVENT_GFX_SNORLAX_STATIC] =           &gObjectEventGraphicsInfo_BigSnorlaxStatic,
     [OBJ_EVENT_GFX_KISS_CUSHION] =             &gObjectEventGraphicsInfo_KissCushion,
-    [OBJ_EVENT_GFX_ZIGZAG_CUSHION] =           &gObjectEventGraphicsInfo_ZigzagCushion,
+    // [OBJ_EVENT_GFX_ZIGZAG_CUSHION] =           &gObjectEventGraphicsInfo_ZigzagCushion,
+    [OBJ_EVENT_GFX_KURT_LYING_DOWN] =          &gObjectEventGraphicsInfo_KurtLyingDown,
     [OBJ_EVENT_GFX_SPIN_CUSHION] =             &gObjectEventGraphicsInfo_SpinCushion,
     [OBJ_EVENT_GFX_DIAMOND_CUSHION] =          &gObjectEventGraphicsInfo_DiamondCushion,
     [OBJ_EVENT_GFX_BALL_CUSHION] =             &gObjectEventGraphicsInfo_BallCushion,

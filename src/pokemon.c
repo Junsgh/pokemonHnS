@@ -4958,10 +4958,14 @@ void CreateBoxMon(struct BoxPokemon *boxMon, u16 species, u8 level, u8 fixedIV, 
               | (gSaveBlock2Ptr->playerTrainerId[2] << 16)
               | (gSaveBlock2Ptr->playerTrainerId[3] << 24);
     
+        #ifndef NDEBUG
+            IsShinyOtIdPersonality(value, personality);
+        #endif
+
         if (!FlagGet(FLAG_NO_SHINY) && FlagGet(FLAG_FORCE_SHINY))
         {
             #ifndef NDEBUG
-                MgbaPrintf(MGBA_LOG_DEBUG, "******** Attempt to Force Shiny for OT %x ********", value);
+                MgbaPrintf(MGBA_LOG_DEBUG, "\n******** Rolling Shiny Personalities for OT %x until Nature matches ********", value);
             #endif
 
             // We want to randomly generate a personality value that is considered shiny for the player's otId
@@ -5030,6 +5034,10 @@ void CreateBoxMon(struct BoxPokemon *boxMon, u16 species, u8 level, u8 fixedIV, 
     // FLAG_NO_SHINY simply prevents the created mon from being shiny
     if (FlagGet(FLAG_NO_SHINY) && !hasFixedPersonality && (GET_SHINY_VALUE(value, personality) < shinyChance))
     {
+        #ifndef NDEBUG
+            MgbaPrintf(MGBA_LOG_DEBUG, "\n******** Rolling Non-Shiny Personalities for OT %x until Nature matches ********", value);
+        #endif
+
         // Randomly generate values until the a non-shiny one with the initially generated nature is rolled
         u8 nature = GetNatureFromPersonality(personality); 
         do
@@ -11059,6 +11067,16 @@ bool8 IsShinyOtIdPersonality(u32 otId, u32 personality)
     // "1 << x" is equivalent to "pow(2, x)"
     u32 shinyChance = SHINY_ODDS << gSaveBlock1Ptr->tx_Features_ShinyChance;
     u32 shinyValue = GET_SHINY_VALUE(otId, personality);
+
+    #ifndef NDEBUG
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** CHECKING SHININESS ********");
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** Trainer Id hexadecimal %x ********", otId);
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** Trainer Id decimal %u ********", otId);
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** Personality Value hexadecimal %x ********", personality);
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** Personality Value decimal %u ********", personality);
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** Shiny Chance %u / 65536 ********", shinyChance);
+        MgbaPrintf(MGBA_LOG_DEBUG, "******** Shiny Value %u ********", shinyValue);
+    #endif
 
     // shinyValue can be any number between 0 and 65535
     // shinyChance can be 8, 16, 32, 64, or 128

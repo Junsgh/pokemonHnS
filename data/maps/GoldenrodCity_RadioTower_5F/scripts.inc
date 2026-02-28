@@ -26,6 +26,7 @@ GoldenrodCity_RadioTower_5F_EventScript_Petrel::
 	@ After Rocket Takeover, this is the real Director
 	goto_if_ge VAR_GOLDENROD_CITY_STATE, 10, GoldenrodCity_RadioTower_5F_EventScript_Director
 	goto_if_eq VAR_FACING, DIR_SOUTH, GoldenrodCity_RadioTower_5F_EventScript_PetrelNorth
+	playse SE_SELECT
 	faceplayer
 	msgbox GoldenrodCity_RadioTower_5F_Text_FakeDirector1, MSGBOX_DEFAULT
 	closemessage

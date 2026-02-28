@@ -25,6 +25,8 @@ extern const u8 gText_Lv50[];
 extern const u8 gText_OpenLevel[];
 
 extern const u8 gText_Mom[];
+extern const u8 gText_MomHowMuchDeposit[];
+extern const u8 gText_MomHowMuchWithdraw[];
 extern const u8 gText_Dad[];
 
 extern const u8 gText_GetsAPokeBlockQuestion[];
@@ -101,6 +103,7 @@ extern const u8 Roulette_Text_NotEnoughCoins[];
 
 extern const u8 gText_Slots[];
 extern const u8 gText_Roulette[];
+extern const u8 gText_Level2[];
 extern const u8 gText_Jackpot[];
 
 extern const u8 gText_YouDontHaveThreeCoins[];
@@ -366,6 +369,7 @@ extern const u8 gText_Birch_Challenge[];
 extern const u8 gText_Birch_WhatsYourName[];
 extern const u8 gText_Birch_SoItsPlayer[];
 extern const u8 gText_Birch_YourePlayer[];
+extern const u8 gText_Birch_ChallengesSoundRight[];
 extern const u8 gText_Birch_AreYouReady[];
 extern const u8 gText_ContinueMenuPlayer[];
 extern const u8 gText_ContinueMenuTime[];
@@ -2393,6 +2397,9 @@ extern const u8 gText_Trade4[];
 extern const u8 gText_Summary5[];
 extern const u8 gText_Switch2[];
 extern const u8 gText_Item[];
+extern const u8 gText_FieldMoves[];
+extern const u8 gText_UseMove[];
+extern const u8 gText_Restore[];
 extern const u8 gText_NotPkmnOtherTrainerWants[];
 extern const u8 gText_ThatIsntAnEgg[];
 extern const u8 gText_OtherTrainersPkmnCantBeTraded[];
@@ -3292,5 +3299,11 @@ extern const u8 gText_BattleRules_NoItems_Player[];
 extern const u8 gText_UnitSystemMetric[];   //tx_optionsPlus
 extern const u8 gText_UnitSystemImperial[]; //tx_optionsPlus
 extern const u8 gText_Var1DotVar2_Metric[];
+
+// Mom's Savings
+extern const u8 gText_CheckSavings[];
+extern const u8 gText_Deposit[];
+extern const u8 gText_Withdraw[];
+extern const u8 gText_SavingOption[];
 
 #endif // GUARD_STRINGS_H

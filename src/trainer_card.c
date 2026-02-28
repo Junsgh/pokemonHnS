@@ -15,6 +15,7 @@
 #include "event_data.h"
 #include "easy_chat.h"
 #include "money.h"
+#include "mom_savings.h"
 #include "strings.h"
 #include "string_util.h"
 #include "trainer_card.h"
@@ -1066,22 +1067,31 @@ static void PrintMoneyOnCard(void)
 {
     s32 xOffset;
     u8 top;
+    u32 savings;
 
     if (!sData->isHoenn)
         AddTextPrinterParameterized3(1, FONT_NORMAL, 20, 56, sTrainerCardTextColors, TEXT_SKIP_DRAW, gText_TrainerCardMoney);
     else
         AddTextPrinterParameterized3(1, FONT_NORMAL, 16, 57, sTrainerCardTextColors, TEXT_SKIP_DRAW, gText_TrainerCardMoney);
 
+    // Format: ¥NormalMoney/$Savings
     ConvertIntToDecimalStringN(gStringVar1, sData->trainerCard.money, STR_CONV_MODE_LEFT_ALIGN, 7);
     StringExpandPlaceholders(gStringVar4, gText_PokedollarVar1);
+    
+    // Append "/$savings" to the money string
+    savings = Mom_GetBalance();
+    StringAppend(gStringVar4, gText_Slash);
+    ConvertIntToDecimalStringN(gStringVar1, savings, STR_CONV_MODE_LEFT_ALIGN, 6);
+    StringAppend(gStringVar4, gStringVar1);
+    
     if (!sData->isHoenn)
     {
-        xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 144);
+        xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 150);
         top = 56;
     }
     else
     {
-        xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 128);
+        xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 134);
         top = 57;
     }
     AddTextPrinterParameterized3(1, FONT_NORMAL, xOffset, top, sTrainerCardTextColors, TEXT_SKIP_DRAW, gStringVar4);
@@ -1108,12 +1118,12 @@ static void PrintPokedexOnCard(void)
         StringCopy(ConvertIntToDecimalStringN(gStringVar4, sData->trainerCard.caughtMonsCount, STR_CONV_MODE_LEFT_ALIGN, 3), gText_EmptyString6);
         if (!sData->isHoenn)
         {
-            xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 144);
+            xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 150);
             top = 72;
         }
         else
         {
-            xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 128);
+            xOffset = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar4, 134);
             top = 73;
         }
         AddTextPrinterParameterized3(1, FONT_NORMAL, xOffset, top, sTrainerCardTextColors, TEXT_SKIP_DRAW, gStringVar4);
@@ -1153,12 +1163,12 @@ static void PrintTimeOnCard(void)
 
     if (!sData->isHoenn)
     {
-        x = 144;
+        x = 150;
         y = 88;
     }
     else
     {
-        x = 128;
+        x = 134;
         y = 89;
     }
     totalWidth = width + 30;

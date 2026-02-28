@@ -2528,6 +2528,11 @@ static u8 CreateNPCTrainerParty(struct Pokemon *party, u16 trainerNum, bool8 fir
 
                 personalityValue += nameHash << 8;
                 fixedIV = partyData[i].iv * MAX_PER_STAT_IVS / 255;
+
+                // Force Sabrina's Mr. Mime to be Female - Easter Egg for Johto Enjoyers, at the request of Headlocker03
+                if (trainerNum == TRAINER_SABRINA && partyData[i].species == SPECIES_MR_MIME && (personalityValue & 0x80) > 0)
+                    personalityValue ^= 0x80;
+
                 //CreateMon(&party[i], partyData[i].species, partyData[i].lvl, fixedIV, TRUE, personalityValue, OT_ID_RANDOM_NO_SHINY, 0);
                 if (gSaveBlock1Ptr->tx_Random_Trainer) //tx_randomizer_and_challenges
                 {

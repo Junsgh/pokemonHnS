@@ -6,6 +6,7 @@
 #include "international_string_util.h"
 #include "menu.h"
 #include "map_name_popup.h"
+#include "overworld.h"
 #include "palette.h"
 #include "region_map.h"
 #include "start_menu.h"
@@ -457,5 +458,18 @@ static void LoadMapNamePopUpWindowBg(void)
         LoadPalette(&sMapPopUp_Palette_Underwater, BG_PLTT_ID(14), sizeof(sMapPopUp_Palette_Underwater));
     else
         LoadPalette(sMapPopUp_PaletteTable[popUpThemeId], BG_PLTT_ID(14), sizeof(sMapPopUp_PaletteTable[0]));
+    
+    // Apply time-of-day blending to palette 14 (bypassing the UI palette filter)
+    if (MapHasNaturalLight(gMapHeader.mapType))
+    {
+        TimeMixPalettes(
+            1 << 14,
+            gPlttBufferUnfaded,
+            gPlttBufferFaded,
+            (struct BlendSettings *)&gTimeOfDayBlend[currentTimeBlend.time0],
+            (struct BlendSettings *)&gTimeOfDayBlend[currentTimeBlend.time1],
+            currentTimeBlend.weight
+        );
+    }
     BlitBitmapToWindow(popupWindowId, sMapPopUp_Table[popUpThemeId], 0, 0, 80, 24);
 }

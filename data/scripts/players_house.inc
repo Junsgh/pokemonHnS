@@ -346,6 +346,7 @@ PlayersHouse_1F_EventScript_TryRegisterMom::
 PlayersHouse_1F_EventScript_CheckGiveAmuletCoin::
 	goto_if_set FLAG_BADGE05_GET, PlayersHouse_1F_EventScript_TryGiveAmuletCoin
 	goto PlayersHouse_1F_EventScript_MomHealsParty
+	end
 
 PlayersHouse_1F_EventScript_TryGiveAmuletCoin::
 	goto_if_set FLAG_RECEIVED_AMULET_COIN, PlayersHouse_1F_EventScript_MomHealsParty
@@ -361,13 +362,13 @@ PlayersHouse_1F_EventScript_MomHealsParty::
 	specialvar VAR_RESULT, IsPokecenterChallengeActivated
 	goto_if_eq VAR_RESULT, TRUE, PlayersHouse_1F_EventScript_MomHealsParty_PokecenterChallenge
 	msgbox PlayersHouse_1F_Text_YouShouldRestABit, MSGBOX_DEFAULT
-	goto PlayersHouse_1F_EventScript_HealParty
-	end
+	call PlayersHouse_1F_EventScript_HealParty
+	return
 
 PlayersHouse_1F_EventScript_MomHealsParty_PokecenterChallenge::
 	msgbox PlayersHouse_1F_Text_YouShouldRestABit_PokecenterChallenge, MSGBOX_DEFAULT
 	closemessage
-	end
+	return
 
 PlayersHouse_1F_EventScript_SeeYouHoney::
 	msgbox PlayersHouse_1F_Text_SeeYouHoney, MSGBOX_DEFAULT
@@ -378,9 +379,9 @@ PlayersHouse_1F_EventScript_HealParty::
 	closemessage
 	call Common_EventScript_OutOfCenterPartyHeal
 	incrementgamestat GAME_STAT_RESTED_AT_HOME
-	msgbox PlayersHouse_1F_Text_TakeCareHoney, MSGBOX_DEFAULT
+	@ msgbox PlayersHouse_1F_Text_TakeCareHoney, MSGBOX_DEFAULT
 	release
-	end
+	return
 
 PlayersHouse_1F_EventScript_DidYouMeetProfBirch::
 	msgbox PlayersHouse_1F_Text_DidYouMeetProfBirch, MSGBOX_DEFAULT

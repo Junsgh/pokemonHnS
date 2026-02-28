@@ -41,7 +41,9 @@ NewBarkTown_PlayersHouse_1F_EventScript_MomsFriend::
 	end
 
 NewBarkTown_PlayersHouse_1F_MomEventScript_GoodLuck::
-	msgbox NewBarkTown_PlayersHouse_1F_Text_MomLeaving, MSGBOX_DEFAULT
+	msgbox NewBarkTown_PlayersHouse_1F_Text_MomLeaving1, MSGBOX_DEFAULT
+	call NewBarkTown_PlayersHouse_1F_EventScript_SavingInit
+	msgbox NewBarkTown_PlayersHouse_1F_Text_MomLeaving2, MSGBOX_DEFAULT
 	setflag FLAG_MOM_VISITED
 	clearflag FLAG_HIDE_ROUTE_30_NPCS
 	setvar VAR_NEWBARK_TOWN_STATE, 5
@@ -51,8 +53,113 @@ NewBarkTown_PlayersHouse_1F_MomEventScript_GoodLuck::
 
 NewBarkTown_PlayersHouse_1F_EventScript_Mom_Regular::
 	call PlayersHouse_1F_EventScript_MomHealsParty
+	call NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
 	release
 	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu::
+	special Special_MomEnsureInitialized
+	msgbox NewBarkTown_PlayersHouse_1F_Text_MomAnythingElse, MSGBOX_DEFAULT
+	multichoice 0, 0, MULTI_MOM_MENU, FALSE
+	switch VAR_RESULT
+	case 0, NewBarkTown_PlayersHouse_1F_EventScript_CheckSavings
+	case 1, NewBarkTown_PlayersHouse_1F_EventScript_Deposit
+	case 2, NewBarkTown_PlayersHouse_1F_EventScript_Withdraw
+	case 3, NewBarkTown_PlayersHouse_1F_EventScript_ToggleSaving
+	case 4, NewBarkTown_PlayersHouse_1F_EventScript_ExitSavings
+	case MULTI_B_PRESSED, NewBarkTown_PlayersHouse_1F_EventScript_ExitSavings
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_CheckSavings::
+	special Special_MomGetBalance
+	msgbox NewBarkTown_PlayersHouse_1F_Text_CurrentSavings, MSGBOX_DEFAULT
+	goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_Deposit::
+	checkmoney 1
+	compare VAR_RESULT, FALSE
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_DepositFailed
+	closemessage
+    special Special_MomOpenDepositInput
+    waitstate
+	compare VAR_0x8000, 0
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	msgbox NewBarkTown_PlayersHouse_1F_Text_DepositSuccess, MSGBOX_DEFAULT
+    goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+    end
+
+NewBarkTown_PlayersHouse_1F_EventScript_DepositFailed::
+	msgbox NewBarkTown_PlayersHouse_1F_Text_NoMoneyToDeposit, MSGBOX_DEFAULT
+	goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_Withdraw::
+	special Special_MomGetBalance
+	compare VAR_RESULT, 0
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_WithdrawFailed
+	closemessage
+    special Special_MomOpenWithdrawInput
+    waitstate
+	compare VAR_0x8000, 0
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	msgbox NewBarkTown_PlayersHouse_1F_Text_WithdrawSuccess, MSGBOX_DEFAULT
+    goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+    end
+
+NewBarkTown_PlayersHouse_1F_EventScript_WithdrawFailed::
+	msgbox NewBarkTown_PlayersHouse_1F_Text_NoMoneyToWithdraw, MSGBOX_DEFAULT
+	goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_SavingInit::
+	msgbox NewBarkTown_PlayersHouse_1F_Text_EnableSaving, MSGBOX_YESNO
+	compare VAR_RESULT, YES
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_ConfirmEnableInit
+	return
+
+NewBarkTown_PlayersHouse_1F_EventScript_ConfirmEnableInit::
+	special Special_MomEnableSaving
+	msgbox NewBarkTown_PlayersHouse_1F_Text_SavingEnabled, MSGBOX_DEFAULT
+	return
+
+NewBarkTown_PlayersHouse_1F_EventScript_ConfirmDisableInit::
+	special Special_MomDisableSaving
+	msgbox NewBarkTown_PlayersHouse_1F_Text_SavingDisabled, MSGBOX_DEFAULT
+	return
+
+NewBarkTown_PlayersHouse_1F_EventScript_ToggleSaving::
+	special Special_MomIsSavingEnabled
+	compare VAR_RESULT, TRUE
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_DisableSaving
+	msgbox NewBarkTown_PlayersHouse_1F_Text_EnableSaving, MSGBOX_YESNO
+	compare VAR_RESULT, YES
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_ConfirmEnable
+	goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_ConfirmEnable::
+	special Special_MomEnableSaving
+	msgbox NewBarkTown_PlayersHouse_1F_Text_SavingEnabled, MSGBOX_DEFAULT
+	goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_DisableSaving::
+	msgbox NewBarkTown_PlayersHouse_1F_Text_DisableSaving, MSGBOX_YESNO
+	compare VAR_RESULT, YES
+	goto_if_eq NewBarkTown_PlayersHouse_1F_EventScript_ConfirmDisable
+	goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_ConfirmDisable::
+	special Special_MomDisableSaving
+	msgbox NewBarkTown_PlayersHouse_1F_Text_SavingDisabled, MSGBOX_DEFAULT
+	goto NewBarkTown_PlayersHouse_1F_EventScript_MomSavingsMenu
+	end
+
+NewBarkTown_PlayersHouse_1F_EventScript_ExitSavings::
+	msgbox NewBarkTown_PlayersHouse_1F_Text_Goodbye, MSGBOX_DEFAULT
+	return
 
 NewBarkTown_PlayersHouse_1F_EventScript_MomsIntroTrigger1::
 	lock
@@ -67,7 +174,6 @@ NewBarkTown_PlayersHouse_1F_EventScript_MomsIntroTrigger2::
 	waitmovement 0
 	goto NewBarkTown_PlayersHouse_1F_EventScript_MomsIntro
 	end
-
 
 NewBarkTown_PlayersHouse_1F_EventScript_MomsIntro::
 	playse SE_PIN
@@ -89,8 +195,6 @@ NewBarkTown_PlayersHouse_1F_EventScript_MomsIntro::
 
 	releaseall
 	end
-
-
 
 NewBarkTown_PlayersHouse_1F_EventScript_GivePokeGear::
 	playfanfare MUS_OBTAIN_ITEM
@@ -197,14 +301,59 @@ NewBarkTown_PlayersHouse_1F_Text_MomsFriend:
 	.string "becoming PROF.ELM's assistant.\p"
 	.string "She really loves POKéMON!$"
 
-NewBarkTown_PlayersHouse_1F_Text_MomLeaving:
+NewBarkTown_PlayersHouse_1F_Text_MomLeaving1:
 	.string "MOM: Wow, that's a cute POKéMON.\n"
 	.string "Where did you get it?\p"
 	.string "…\p"
-	.string "So, you're leaving on an adventure...\n"
-	.string "That does sound challenging...\p"
+	.string "So, you're leaving on an adventure...\p"
+	.string "OK!\nI'll help too.\p"
+	.string "I know! I'll save money for you.\n"
+	.string "On a long journey, money's important.$"
+
+NewBarkTown_PlayersHouse_1F_Text_MomLeaving2:
 	.string "Just be careful.\p"
 	.string "POKéMON are your friends.\n"
 	.string "You need to work as a team.\p"
 	.string "Now, go on!\n"
 	.string "I'm behind you all the way!$"
+	
+NewBarkTown_PlayersHouse_1F_Text_MomAnythingElse:
+	.string "Is there anything else I can\n"
+	.string "help you with, sweetie?$"
+
+NewBarkTown_PlayersHouse_1F_Text_CurrentSavings:
+	.string "I'm holding {STR_VAR_2}\n"
+	.string "for you right now.$"
+
+NewBarkTown_PlayersHouse_1F_Text_EnableSaving:
+	.string "Do you want me to save some of the \n"
+	.string "money you earn?$"
+
+NewBarkTown_PlayersHouse_1F_Text_SavingEnabled:
+	.string "Okay! I'll save 25% of\n"
+	.string "the money you earn from battles.$"
+
+NewBarkTown_PlayersHouse_1F_Text_DisableSaving:
+	.string "Would you like me to stop\n"
+	.string "saving for you?$"
+
+NewBarkTown_PlayersHouse_1F_Text_SavingDisabled:
+	.string "Okay, I'll stop saving for now.$"
+
+NewBarkTown_PlayersHouse_1F_Text_Goodbye:
+	.string "Take care, sweetie!$"
+
+NewBarkTown_PlayersHouse_1F_Text_DepositSuccess:
+	.string "MOM: Sounds good! I'll put that in\n"
+	.string "savings for you.$"
+
+NewBarkTown_PlayersHouse_1F_Text_WithdrawSuccess:
+	.string "MOM: Here you go!$"
+
+NewBarkTown_PlayersHouse_1F_Text_NoMoneyToDeposit:
+	.string "MOM: You don't have any money to\n"
+	.string "deposit right now, sweetie.$"
+
+NewBarkTown_PlayersHouse_1F_Text_NoMoneyToWithdraw:
+	.string "MOM: I haven't saved any money\n"
+	.string "for you yet, honey.$"

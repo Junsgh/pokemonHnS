@@ -257,6 +257,7 @@ const u32 gObjectEventPic_BigVenusaurDoll[] = INCBIN_U32("graphics/object_events
 const u32 gObjectEventPic_BigCharizardDoll[] = INCBIN_U32("graphics/object_events/pics/dolls/big_charizard_doll.4bpp");
 const u32 gObjectEventPic_BigBlastoiseDoll[] = INCBIN_U32("graphics/object_events/pics/dolls/big_blastoise_doll.4bpp");
 const u32 gObjectEventPic_BigWailmerDoll[] = INCBIN_U32("graphics/object_events/pics/dolls/big_wailmer_doll.4bpp");
+const u32 gObjectEventPic_KurtLyingDown[] = INCBIN_U32("graphics/object_events/pics/people/special/kurt_lying_down.4bpp");
 const u32 gObjectEventPic_BigRegirockDoll[] = INCBIN_U32("graphics/object_events/pics/dolls/big_regirock_doll.4bpp");
 const u32 gObjectEventPic_BigRegiceDoll[] = INCBIN_U32("graphics/object_events/pics/dolls/big_regice_doll.4bpp");
 const u32 gObjectEventPic_BigRegisteelDoll[] = INCBIN_U32("graphics/object_events/pics/dolls/big_registeel_doll.4bpp");
