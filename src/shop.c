@@ -2383,7 +2383,7 @@ void CreateKurtBallShop(const u16 *itemsForSale)
 // ============================================================
 
 // Scratch buffer: item IDs only, for SetShopItemsForSale
-static u16 sBPItemList[16];
+static EWRAM_DATA u16 sBPItemList[16];
 
 static void SetBPShopItems(const struct BPShopEntry *entries)
 {
