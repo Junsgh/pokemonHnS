@@ -4710,6 +4710,7 @@ extern const u32 gShopMenu_Gfx[];
 extern const u32 gShopMenu_Tilemap[];
 extern const u32 gShopMenu_Pal[];
 extern const u32 gShopMenuMoney_Gfx[];
+extern const u32 gShopMenuBP_Gfx[];
 
 extern const u32 gBattleInterface_BallStatusBarGfxGen4[];
 extern const u8 gBattleInterface_BallDisplayGfxGen4[];

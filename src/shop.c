@@ -40,6 +40,7 @@
 #include "constants/metatile_behaviors.h"
 #include "constants/rgb.h"
 #include "constants/songs.h"
+#include "data/battle_frontier/battle_frontier_exchange_corner.h"
 
 #define TAG_SCROLL_ARROW   2100
 #define TAG_ITEM_ICON_BASE 9110 // immune to time blending
@@ -74,6 +75,9 @@ enum {
     MART_TYPE_DECOR,
     MART_TYPE_DECOR2,
     MART_TYPE_KURT,
+    MART_TYPE_BP,       // BP currency, multi-buy (Vitamin clerk)
+    MART_TYPE_BP_ITEM,  // BP currency, single-buy regular items (Hold Item clerk)
+    MART_TYPE_BP_DECOR, // BP currency, single-buy decorations (Decor clerks)
 };
 
 // shop view window NPC info enum
@@ -136,6 +140,7 @@ static EWRAM_DATA u8 sPurchaseHistoryId = 0;
 static EWRAM_DATA u16 sKurtCurrentBerry = ITEM_NONE;
 static EWRAM_DATA u8 sBerryIconSpriteId = SPRITE_NONE;
 static EWRAM_DATA u8 sQuantityBerryIconSpriteId = SPRITE_NONE;
+static EWRAM_DATA const struct BPShopEntry *sBPShopEntries = NULL;
 EWRAM_DATA struct ItemSlot gMartPurchaseHistory[SMARTSHOPPER_NUM_ITEMS] = {0};
 
 static void Task_ShopMenu(u8 taskId);
@@ -363,6 +368,33 @@ static void PrintBerryCount(u8 windowId, u16 berryItem)
     
     // Print text after the icon
     AddTextPrinterParameterized(windowId, FONT_NORMAL, gStringVar4, 23, 5, 0, NULL);
+}
+
+// Look up the BP cost for an item in the active BP shop entry table.
+static u16 GetBPCostForItem(u16 itemId)
+{
+    u16 i = 0;
+    if (sBPShopEntries == NULL)
+        return 0;
+    while (sBPShopEntries[i].item != ITEM_NONE)
+    {
+        if (sBPShopEntries[i].item == itemId)
+            return sBPShopEntries[i].bpCost;
+        i++;
+    }
+    return 0;
+}
+
+// Draw the border and print the current BP amount in the WIN_MONEY window.
+static void PrintBPAmountInMoneyBox(u8 windowId, u32 bp, u8 speed)
+{
+    u8 *ptr = ConvertIntToDecimalStringN(gStringVar1, bp, STR_CONV_MODE_RIGHT_ALIGN, 4);
+    u8 x;
+    StringCopy(ptr, gText_BP);
+    x = GetStringRightAlignXOffset(FONT_NORMAL, gStringVar1, 80);
+    FillWindowPixelBuffer(windowId, PIXEL_FILL(1));
+    AddTextPrinterParameterized(windowId, FONT_NORMAL, gStringVar1, x, 1, speed, NULL);
+    CopyWindowToVram(windowId, COPYWIN_FULL);
 }
 
 static const u16 sShopInventory_ZeroBadges[] = {
@@ -1199,9 +1231,12 @@ static void BuyMenuBuildListMenuTemplate(void)
 
 static void BuyMenuSetListEntry(struct ListMenuItem *menuItem, u16 item, u8 *name)
 {
-    if (sMartInfo.martType == MART_TYPE_NORMAL || sMartInfo.martType == MART_TYPE_KURT)
+    if (sMartInfo.martType == MART_TYPE_NORMAL
+        || sMartInfo.martType == MART_TYPE_KURT
+        || sMartInfo.martType == MART_TYPE_BP
+        || sMartInfo.martType == MART_TYPE_BP_ITEM)
         CopyItemName(item, name);
-    else
+    else  // DECOR, DECOR2, BP_DECOR
         StringCopy(name, gDecorations[item].name);
 
     menuItem->name = name;
@@ -1223,7 +1258,9 @@ static void BuyMenuPrintItemDescriptionAndShowItemIcon(s32 item, bool8 onInit, s
     sShopData->iconSlot ^= 1;
     if (item != LIST_CANCEL)
     {
-        if (sMartInfo.martType == MART_TYPE_NORMAL)
+        if (sMartInfo.martType == MART_TYPE_NORMAL
+            || sMartInfo.martType == MART_TYPE_BP
+            || sMartInfo.martType == MART_TYPE_BP_ITEM)
             description = ItemId_GetDescription(item);
         else if (sMartInfo.martType == MART_TYPE_KURT)
         {
@@ -1260,7 +1297,18 @@ static void BuyMenuPrintPriceInList(u8 windowId, u32 itemId, u8 y)
 
     if (itemId != LIST_CANCEL)
     {
-        if (sMartInfo.martType == MART_TYPE_KURT)
+        if (sMartInfo.martType == MART_TYPE_BP
+            || sMartInfo.martType == MART_TYPE_BP_ITEM
+            || sMartInfo.martType == MART_TYPE_BP_DECOR)
+        {
+            // Show "##BP" right-aligned in the list
+            u8 *ptr = ConvertIntToDecimalStringN(gStringVar4, GetBPCostForItem((u16)itemId), STR_CONV_MODE_LEFT_ALIGN, 4);
+            StringCopy(ptr, gText_BP);
+            x = GetStringRightAlignXOffset(FONT_NARROW, gStringVar4, 120);
+            AddTextPrinterParameterized4(windowId, FONT_NARROW, x, y, 0, 0, sShopBuyMenuTextColors[COLORID_ITEM_LIST], TEXT_SKIP_DRAW, gStringVar4);
+            return;
+        }
+        else if (sMartInfo.martType == MART_TYPE_KURT)
         {
             // For Kurt shop, show "1 BerryName" instead of price (removing " Berry" suffix)
             u16 berryId = ITEM_NONE;
@@ -1346,7 +1394,11 @@ static void BuyMenuAddItemIcon(u16 item, u8 iconSlot)
     if (*spriteIdPtr != SPRITE_NONE)
         return;
 
-    if (sMartInfo.martType == MART_TYPE_NORMAL || sMartInfo.martType == MART_TYPE_KURT || item == ITEM_LIST_END)
+    if (sMartInfo.martType == MART_TYPE_NORMAL
+        || sMartInfo.martType == MART_TYPE_KURT
+        || sMartInfo.martType == MART_TYPE_BP
+        || sMartInfo.martType == MART_TYPE_BP_ITEM
+        || item == ITEM_LIST_END)
     {
         spriteId = AddItemIconSprite(iconSlot + TAG_ITEM_ICON_BASE, iconSlot + TAG_ITEM_ICON_BASE, item);
         if (spriteId != MAX_SPRITES)
@@ -1467,6 +1519,15 @@ static void BuyMenuDrawGraphics(void)
             PrintBerryCount(WIN_BERRIES, sKurtCurrentBerry);
         }
         
+    }
+    else if (sMartInfo.martType == MART_TYPE_BP
+             || sMartInfo.martType == MART_TYPE_BP_ITEM
+             || sMartInfo.martType == MART_TYPE_BP_DECOR)
+    {
+        // For BP shops: draw WIN_MONEY border, show current BP, and add BP label sprite
+        DrawStdFrameWithCustomTileAndPalette(WIN_MONEY, FALSE, 1, 13);
+        PrintBPAmountInMoneyBox(WIN_MONEY, gSaveBlock2Ptr->frontier.battlePoints, 0);
+        AddBPLabelObject(19, 11);
     }
     else
     {
@@ -1703,9 +1764,13 @@ static void Task_BuyMenu(u8 taskId)
                 sShopData->totalCost = (ItemId_GetPrice(itemId) >> IsPokeNewsActive(POKENEWS_SLATEPORT));
             else if (sMartInfo.martType == MART_TYPE_KURT)
                 sShopData->totalCost = 1; // 1 berry per ball
+            else if (sMartInfo.martType == MART_TYPE_BP
+                     || sMartInfo.martType == MART_TYPE_BP_ITEM
+                     || sMartInfo.martType == MART_TYPE_BP_DECOR)
+                sShopData->totalCost = GetBPCostForItem(itemId); // BP cost per item
             else
                 sShopData->totalCost = gDecorations[itemId].price;
-           
+
             if (sMartInfo.martType == MART_TYPE_KURT)
             {
                 // For Kurt shop, check berry availability
@@ -1723,6 +1788,55 @@ static void Task_BuyMenu(u8 taskId)
                     // Proceed to quantity selection
                     CopyItemName(itemId, gStringVar1);
                     BuyMenuDisplayMessage(taskId, gText_Var1SureHowMany, Task_BuyHowManyDialogueInit);
+                }
+            }
+            else if (sMartInfo.martType == MART_TYPE_BP)
+            {
+                // Multi-buy vitamin shop: check BP then go to quantity selection
+                if (gSaveBlock2Ptr->frontier.battlePoints < sShopData->totalCost)
+                {
+                    BuyMenuDisplayMessage(taskId, gText_YouDontHaveEnoughBP, BuyMenuReturnToItemList);
+                }
+                else
+                {
+                    CopyItemName(itemId, gStringVar1);
+                    BuyMenuDisplayMessage(taskId, gText_Var1CertainlyHowMany, Task_BuyHowManyDialogueInit);
+                }
+            }
+            else if (sMartInfo.martType == MART_TYPE_BP_ITEM)
+            {
+                // Single-buy held item shop: check BP then confirm directly
+                if (gSaveBlock2Ptr->frontier.battlePoints < sShopData->totalCost)
+                {
+                    BuyMenuDisplayMessage(taskId, gText_YouDontHaveEnoughBP, BuyMenuReturnToItemList);
+                }
+                else
+                {
+                    u8 *ptr;
+                    tItemCount = 1;
+                    CopyItemName(itemId, gStringVar1);
+                    ptr = ConvertIntToDecimalStringN(gStringVar2, sShopData->totalCost, STR_CONV_MODE_LEFT_ALIGN, 4);
+                    StringCopy(ptr, gText_BP);
+                    StringExpandPlaceholders(gStringVar4, gText_YouWantedVar1ThatllBeVar2BP);
+                    BuyMenuDisplayMessage(taskId, gStringVar4, BuyMenuConfirmPurchase);
+                }
+            }
+            else if (sMartInfo.martType == MART_TYPE_BP_DECOR)
+            {
+                // Single-buy decoration shop: check BP then confirm directly
+                if (gSaveBlock2Ptr->frontier.battlePoints < sShopData->totalCost)
+                {
+                    BuyMenuDisplayMessage(taskId, gText_YouDontHaveEnoughBP, BuyMenuReturnToItemList);
+                }
+                else
+                {
+                    u8 *ptr;
+                    tItemCount = 1;
+                    StringCopy(gStringVar1, gDecorations[itemId].name);
+                    ptr = ConvertIntToDecimalStringN(gStringVar2, sShopData->totalCost, STR_CONV_MODE_LEFT_ALIGN, 4);
+                    StringCopy(ptr, gText_BP);
+                    StringExpandPlaceholders(gStringVar4, gText_YouWantedVar1ThatllBeVar2BP);
+                    BuyMenuDisplayMessage(taskId, gStringVar4, BuyMenuConfirmPurchase);
                 }
             }
             else if (!IsEnoughMoney(&gSaveBlock1Ptr->money, sShopData->totalCost))
@@ -1805,6 +1919,15 @@ static void Task_BuyHowManyDialogueInit(u8 taskId)
         else
             sShopData->maxQuantity = maxQuantity;
     }
+    else if (sMartInfo.martType == MART_TYPE_BP)
+    {
+        // For BP vitamin shop, max quantity is affordable with current BP
+        maxQuantity = gSaveBlock2Ptr->frontier.battlePoints / sShopData->totalCost;
+        if (maxQuantity > MAX_BAG_ITEM_CAPACITY)
+            sShopData->maxQuantity = MAX_BAG_ITEM_CAPACITY;
+        else
+            sShopData->maxQuantity = maxQuantity;
+    }
     else
     {
         maxQuantity = GetMoney(&gSaveBlock1Ptr->money) / sShopData->totalCost;
@@ -1828,6 +1951,11 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
         {
             // For Kurt shop, total cost is 1:1 ratio
             sShopData->totalCost = tItemCount;
+        }
+        else if (sMartInfo.martType == MART_TYPE_BP)
+        {
+            // For BP vitamin shop, re-derive total cost from per-item cost
+            sShopData->totalCost = GetBPCostForItem(tItemId) * tItemCount;
         }
         else
         {
@@ -1863,6 +1991,12 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
                     BuyMenuDisplayMessage(taskId, gText_KurtVar1AndYouWantedVar2Singular, BuyMenuConfirmPurchase);
                 else
                     BuyMenuDisplayMessage(taskId, gText_KurtVar1AndYouWantedVar2Plural, BuyMenuConfirmPurchase);
+            }
+            else if (sMartInfo.martType == MART_TYPE_BP)
+            {
+                // Append "BP" to the cost string shown in the confirm message
+                StringCopy(gStringVar3 + StringLength(gStringVar3), gText_BP);
+                BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2, BuyMenuConfirmPurchase);
             }
             else
                 BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2, BuyMenuConfirmPurchase);
@@ -1930,6 +2064,30 @@ static void BuyMenuTryMakePurchase(u8 taskId)
             BuyMenuDisplayMessage(taskId, gText_NoMoreRoomForThis, BuyMenuReturnToItemList);
         }
     }
+    else if (sMartInfo.martType == MART_TYPE_BP || sMartInfo.martType == MART_TYPE_BP_ITEM)
+    {
+        // BP item shops: give item, then deduct BP
+        if (AddBagItem(tItemId, tItemCount) == TRUE)
+        {
+            BuyMenuDisplayMessage(taskId, gText_HereYouGoThankYou, BuyMenuSubtractMoney);
+        }
+        else
+        {
+            BuyMenuDisplayMessage(taskId, gText_NoMoreRoomForThis, BuyMenuReturnToItemList);
+        }
+    }
+    else if (sMartInfo.martType == MART_TYPE_BP_DECOR)
+    {
+        // BP decoration shop: send to PC, then deduct BP
+        if (DecorationAdd(tItemId))
+        {
+            BuyMenuDisplayMessage(taskId, gText_ThankYouIllSendItHome, BuyMenuSubtractMoney);
+        }
+        else
+        {
+            BuyMenuDisplayMessage(taskId, gText_SpaceForVar1Full, BuyMenuReturnToItemList);
+        }
+    }
     else
     {
         if (DecorationAdd(tItemId))
@@ -1963,6 +2121,20 @@ static void BuyMenuSubtractMoney(u8 taskId)
         gSpecialVar_Result = TRUE;
         // Wait for button press before exiting
         gTasks[taskId].func = Task_ExitKurtShopAfterPurchase;
+    }
+    else if (sMartInfo.martType == MART_TYPE_BP
+             || sMartInfo.martType == MART_TYPE_BP_ITEM
+             || sMartInfo.martType == MART_TYPE_BP_DECOR)
+    {
+        // Deduct BP and refresh the BP window
+        gSaveBlock2Ptr->frontier.battlePoints -= (u16)sShopData->totalCost;
+        PlaySE(SE_SHOP);
+        PrintBPAmountInMoneyBox(WIN_MONEY, gSaveBlock2Ptr->frontier.battlePoints, 0);
+
+        if (sMartInfo.martType == MART_TYPE_BP_DECOR)
+            gTasks[taskId].func = Task_ReturnToItemListAfterDecorationPurchase;
+        else
+            gTasks[taskId].func = Task_ReturnToItemListAfterItemPurchase;
     }
     else
     {
@@ -2062,6 +2234,20 @@ static void BuyMenuPrintItemQuantityAndPrice(u8 taskId)
         berryItem = GetBerryFromBall(tItemId);
         AddQuantityBerryIcon(berryItem);
     }
+    else if (sMartInfo.martType == MART_TYPE_BP)
+    {
+        // For BP vitamin shop: "×001  ##BP"
+        u8 x;
+        u8 bp_text[16];
+        ConvertIntToDecimalStringN(gStringVar1, tItemCount, STR_CONV_MODE_LEADING_ZEROS, BAG_ITEM_CAPACITY_DIGITS);
+        StringExpandPlaceholders(gStringVar4, gText_xVar1);
+        BuyMenuPrint(WIN_QUANTITY_PRICE, gStringVar4, 0, 1, 0, COLORID_NORMAL);
+        // Print "##BP" right-aligned on the price side
+        ConvertIntToDecimalStringN(bp_text, sShopData->totalCost, STR_CONV_MODE_LEFT_ALIGN, 4);
+        StringAppend(bp_text, gText_BP);
+        x = GetStringRightAlignXOffset(FONT_NORMAL, bp_text, 80);
+        BuyMenuPrint(WIN_QUANTITY_PRICE, bp_text, x, 1, 0, COLORID_NORMAL);
+    }
     else
     {
         PrintMoneyAmount(WIN_QUANTITY_PRICE, 32, 1, sShopData->totalCost, TEXT_SKIP_DRAW);
@@ -2073,8 +2259,11 @@ static void BuyMenuPrintItemQuantityAndPrice(u8 taskId)
 
 static void ExitBuyMenu(u8 taskId)
 {
-    // Don't set field callback for Kurt shop (goes back to script instead)
-    if (sMartInfo.martType != MART_TYPE_KURT)
+    // Don't set field callback for Kurt or BP shops (they re-enable script directly)
+    if (sMartInfo.martType != MART_TYPE_KURT
+        && sMartInfo.martType != MART_TYPE_BP
+        && sMartInfo.martType != MART_TYPE_BP_ITEM
+        && sMartInfo.martType != MART_TYPE_BP_DECOR)
         gFieldCallback = MapPostLoadHook_ReturnToShopMenu;
     
     BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
@@ -2085,12 +2274,20 @@ static void Task_ExitBuyMenu(u8 taskId)
 {
     if (!gPaletteFade.active)
     {
-        RemoveMoneyLabelObject();
+        if (sMartInfo.martType == MART_TYPE_BP
+            || sMartInfo.martType == MART_TYPE_BP_ITEM
+            || sMartInfo.martType == MART_TYPE_BP_DECOR)
+            RemoveBPLabelObject();
+        else
+            RemoveMoneyLabelObject();
         BuyMenuFreeMemory();
         SetMainCallback2(CB2_ReturnToField);
         
-        // For Kurt shop, unlock controls and continue script
-        if (sMartInfo.martType == MART_TYPE_KURT)
+        // For Kurt and BP shops: unlock controls and continue script directly
+        if (sMartInfo.martType == MART_TYPE_KURT
+            || sMartInfo.martType == MART_TYPE_BP
+            || sMartInfo.martType == MART_TYPE_BP_ITEM
+            || sMartInfo.martType == MART_TYPE_BP_DECOR)
         {
             UnlockPlayerFieldControls();
             if (sMartInfo.callback)
@@ -2180,3 +2377,47 @@ void CreateKurtBallShop(const u16 *itemsForSale)
     gTasks[taskId].func = Task_GoToBuyOrSellMenu;
     FadeScreen(FADE_TO_BLACK, 0);
 }
+
+// ============================================================
+// BP Exchange Corner shops
+// ============================================================
+
+// Scratch buffer: item IDs only, for SetShopItemsForSale
+static EWRAM_DATA u16 sBPItemList[16];
+
+static void SetBPShopItems(const struct BPShopEntry *entries)
+{
+    u16 i = 0;
+    sBPShopEntries = entries;
+    while (entries[i].item != ITEM_NONE && i < ARRAY_COUNT(sBPItemList) - 1)
+    {
+        sBPItemList[i] = entries[i].item;
+        i++;
+    }
+    sBPItemList[i] = ITEM_NONE;
+    SetShopItemsForSale(sBPItemList);
+}
+
+static void CreateBPShopCommon(u8 martType, const struct BPShopEntry *entries)
+{
+    u8 taskId;
+    s16 *data;
+
+    // Skip BUY/QUIT menu, go straight to buy menu (same pattern as Kurt)
+    LockPlayerFieldControls();
+    sMartInfo.martType = martType;
+    SetBPShopItems(entries);
+    SetShopMenuCallback(ScriptContext_Enable);
+
+    taskId = CreateTask(Task_ShopMenu, 8);
+    data = gTasks[taskId].data;
+    data[8] = (u32)CB2_InitBuyMenu >> 16;  // tCallbackHi
+    data[9] = (u32)CB2_InitBuyMenu;        // tCallbackLo
+    gTasks[taskId].func = Task_GoToBuyOrSellMenu;
+    FadeScreen(FADE_TO_BLACK, 0);
+}
+
+void CreateBPVitaminShop(void)  { CreateBPShopCommon(MART_TYPE_BP,      sBPVitaminShopEntries);  }
+void CreateBPHoldItemShop(void) { CreateBPShopCommon(MART_TYPE_BP_ITEM,  sBPHoldItemShopEntries); }
+void CreateBPDecorShop1(void)   { CreateBPShopCommon(MART_TYPE_BP_DECOR, sBPDecor1ShopEntries);   }
+void CreateBPDecorShop2(void)   { CreateBPShopCommon(MART_TYPE_BP_DECOR, sBPDecor2ShopEntries);   }
