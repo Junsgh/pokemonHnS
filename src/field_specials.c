@@ -3016,7 +3016,7 @@ void CloseFrontierExchangeCornerItemIconWindow(void)
 
 static void FillFrontierExchangeCornerWindowAndItemIcon(u16 menu, u16 selection)
 {
-    #include "data/battle_frontier/battle_frontier_exchange_corner.h"
+    #include "data/trainer_hill/trainer_hill_exchange_corner.h"
 
     if (menu >= SCROLL_MULTI_BF_EXCHANGE_CORNER_DECOR_VENDOR_1 && menu <= SCROLL_MULTI_BF_EXCHANGE_CORNER_HOLD_ITEM_VENDOR)
     {
@@ -3024,38 +3024,38 @@ static void FillFrontierExchangeCornerWindowAndItemIcon(u16 menu, u16 selection)
         switch (menu)
         {
         case SCROLL_MULTI_BF_EXCHANGE_CORNER_DECOR_VENDOR_1:
-            AddTextPrinterParameterized2(0, FONT_NORMAL, sFrontierExchangeCorner_Decor1Descriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
-            if (sFrontierExchangeCorner_Decor1[selection] == ITEM_LIST_END)
+            AddTextPrinterParameterized2(0, FONT_NORMAL, sTrainerHillExchangeCorner_Decor1Descriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
+            if (sTrainerHillExchangeCorner_Decor1[selection] == ITEM_LIST_END)
             {
-                ShowFrontierExchangeCornerItemIcon(sFrontierExchangeCorner_Decor1[selection]);
+                ShowFrontierExchangeCornerItemIcon(sTrainerHillExchangeCorner_Decor1[selection]);
             }
             else
             {
                 FreeSpriteTilesByTag(TAG_ITEM_ICON);
                 FreeSpritePaletteByTag(TAG_ITEM_ICON);
-                sScrollableMultichoice_ItemSpriteId = AddDecorationIconObject(sFrontierExchangeCorner_Decor1[selection], 33, 88, 0, TAG_ITEM_ICON, TAG_ITEM_ICON);
+                sScrollableMultichoice_ItemSpriteId = AddDecorationIconObject(sTrainerHillExchangeCorner_Decor1[selection], 33, 88, 0, TAG_ITEM_ICON, TAG_ITEM_ICON);
             }
             break;
         case SCROLL_MULTI_BF_EXCHANGE_CORNER_DECOR_VENDOR_2:
-            AddTextPrinterParameterized2(0, FONT_NORMAL, sFrontierExchangeCorner_Decor2Descriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
-            if (sFrontierExchangeCorner_Decor2[selection] == ITEM_LIST_END)
+            AddTextPrinterParameterized2(0, FONT_NORMAL, sTrainerHillExchangeCorner_Decor2Descriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
+            if (sTrainerHillExchangeCorner_Decor2[selection] == ITEM_LIST_END)
             {
-                ShowFrontierExchangeCornerItemIcon(sFrontierExchangeCorner_Decor2[selection]);
+                ShowFrontierExchangeCornerItemIcon(sTrainerHillExchangeCorner_Decor2[selection]);
             }
             else
             {
                 FreeSpriteTilesByTag(TAG_ITEM_ICON);
                 FreeSpritePaletteByTag(TAG_ITEM_ICON);
-                sScrollableMultichoice_ItemSpriteId = AddDecorationIconObject(sFrontierExchangeCorner_Decor2[selection], 33, 88, 0, TAG_ITEM_ICON, TAG_ITEM_ICON);
+                sScrollableMultichoice_ItemSpriteId = AddDecorationIconObject(sTrainerHillExchangeCorner_Decor2[selection], 33, 88, 0, TAG_ITEM_ICON, TAG_ITEM_ICON);
             }
             break;
         case SCROLL_MULTI_BF_EXCHANGE_CORNER_VITAMIN_VENDOR:
-            AddTextPrinterParameterized2(0, FONT_NORMAL, sFrontierExchangeCorner_VitaminsDescriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
-            ShowFrontierExchangeCornerItemIcon(sFrontierExchangeCorner_Vitamins[selection]);
+            AddTextPrinterParameterized2(0, FONT_NORMAL, sTrainerHillExchangeCorner_VitaminsDescriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
+            ShowFrontierExchangeCornerItemIcon(sTrainerHillExchangeCorner_Vitamins[selection]);
             break;
         case SCROLL_MULTI_BF_EXCHANGE_CORNER_HOLD_ITEM_VENDOR:
-            AddTextPrinterParameterized2(0, FONT_NORMAL, sFrontierExchangeCorner_HoldItemsDescriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
-            ShowFrontierExchangeCornerItemIcon(sFrontierExchangeCorner_HoldItems[selection]);
+            AddTextPrinterParameterized2(0, FONT_NORMAL, sTrainerHillExchangeCorner_HoldItemsDescriptions[selection], 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
+            ShowFrontierExchangeCornerItemIcon(sTrainerHillExchangeCorner_HoldItems[selection]);
             break;
         }
     }
