@@ -18,6 +18,14 @@ static const u32 sPokedexAreaMapAffine_Tilemap[] = INCBIN_U32("graphics/pokedex/
 static const u32 sPokedexAreaMap_Gfx_Johto[]     = INCBIN_U32("graphics/pokedex/johto_region_map.8bpp.lz");
 static const u32 sPokedexAreaMap_Tilemap_Johto[] = INCBIN_U32("graphics/pokedex/johto_region_map.bin.lz");
 
+// Returns a pointer to the ROM palette for the currently-active region-map art
+// (combined JK or Johto-only).  Callers that need the untinted base palette can
+// read directly from ROM rather than caching a copy in EWRAM.
+const u16 *GetPokedexAreaMapPal(void)
+{
+    return sPokedexAreaMap_Pal; // single shared palette regardless of map variant
+}
+
 void LoadPokedexAreaMapGfx(const struct PokedexAreaMapTemplate *template)
 {
     u8 mode;

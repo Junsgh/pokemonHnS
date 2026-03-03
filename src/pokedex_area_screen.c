@@ -106,7 +106,20 @@ struct
     /*0xF70*/ u8 charBuffer[64];
     /*0xFB0*/ struct Sprite * areaUnknownSprites[3];
     /*0xFBC*/ u8 areaUnknownGraphicsBuffer[0x600];
+    // Cached encounter results for the *alternate* time mode so that toggling
+    // day↔night is a fast array swap rather than a full header re-scan.
+    // Populated once during DrawAreaGlow and kept live across toggles.
+    /*0x15BC*/ struct OverworldArea overworldAreasWithMons_alt[MAX_AREA_HIGHLIGHTS];
+    /*0x16BC*/ u16 numOverworldAreas_alt;
+    /*0x16BE*/ u16 specialAreaRegionMapSectionIds_alt[MAX_AREA_MARKERS];
+    /*0x16FE*/ u16 numSpecialAreas_alt;
+    // Pre-built glow tilemap for the alternate time mode, swapped on toggle
+    // so BuildAreaGlowTilemap is never called in the hot toggle path.
+    /*0x1700*/ u16 areaGlowTilemap_alt[AREA_SCREEN_WIDTH * AREA_SCREEN_HEIGHT];
 } static EWRAM_DATA *sPokedexAreaScreen = NULL;
+
+// ApplyTimeModeToAreaMapPalette reads the untinted palette directly from ROM via
+// GetPokedexAreaMapPal(), so no EWRAM cache is needed.
 
 static void FindMapsWithMon(u16);
 static void BuildAreaGlowTilemap(void);
@@ -125,7 +138,8 @@ static void ResetPokedexAreaMapBg(void);
 static void DestroyAreaScreenSprites(void);
 static void LoadHGSSScreenSelectBarSubmenu(void);
 static void CreateAreaIndicatorSprites(void);
-static void RefreshAreaGlowForTimeMode(void);
+static void ContinueTimeModeRefresh(u8);
+static void ApplyTimeModeToAreaMapPalette(void);
 
 static const u32 sAreaGlow_Pal[] = INCBIN_U32("graphics/pokedex/area_glow.gbapal");
 static const u32 sAreaGlow_Gfx[] = INCBIN_U32("graphics/pokedex/area_glow.4bpp.lz");
@@ -742,6 +756,28 @@ static bool8 DrawAreaGlow(void)
     switch (sPokedexAreaScreen->drawAreaGlowState)
     {
     case 0:
+        // Scan the alternate time mode first so its results land in the active
+        // arrays, which we then copy straight into the _alt cache.  Flipping
+        // back and re-scanning for the real current mode leaves the active
+        // arrays correct and both caches populated — all within a single frame.
+        sPokedexAreaScreen->areaViewTimeMode ^= 1;
+        FindMapsWithMon(sPokedexAreaScreen->species);
+        CpuCopy32(sPokedexAreaScreen->overworldAreasWithMons,
+                  sPokedexAreaScreen->overworldAreasWithMons_alt,
+                  sizeof(sPokedexAreaScreen->overworldAreasWithMons_alt));
+        sPokedexAreaScreen->numOverworldAreas_alt = sPokedexAreaScreen->numOverworldAreas;
+        CpuCopy16(sPokedexAreaScreen->specialAreaRegionMapSectionIds,
+                  sPokedexAreaScreen->specialAreaRegionMapSectionIds_alt,
+                  sizeof(sPokedexAreaScreen->specialAreaRegionMapSectionIds_alt));
+        sPokedexAreaScreen->numSpecialAreas_alt = sPokedexAreaScreen->numSpecialAreas;
+        // Also pre-build the alt glow tilemap while the alt encounter data is
+        // still in the active arrays, then copy it into the alt cache.
+        BuildAreaGlowTilemap();
+        CpuCopy16(sPokedexAreaScreen->areaGlowTilemap,
+                  sPokedexAreaScreen->areaGlowTilemap_alt,
+                  sizeof(sPokedexAreaScreen->areaGlowTilemap_alt));
+        // Restore the real mode and populate the active arrays.
+        sPokedexAreaScreen->areaViewTimeMode ^= 1;
         FindMapsWithMon(sPokedexAreaScreen->species);
         break;
     case 1:
@@ -1222,6 +1258,21 @@ static void Task_ShowPokedexAreaScreen(u8 taskId)
         break;
     case 8:
         CreateAreaUnknownSprites();
+        // Pre-tint gPlttBufferUnfaded for night mode so BeginNormalPaletteFade
+        // fades toward the correct tinted colors rather than the raw map palette.
+        // BlendPalettes reads unfaded and writes faded; copy faded back as the new target.
+        if (sPokedexAreaScreen->areaViewTimeMode == 1)
+        {
+            BlendPalettes((1 << 7) | (1 << 8), 8, RGB(2, 4, 10));
+            CpuCopy32(&gPlttBufferFaded[BG_PLTT_ID(7)], &gPlttBufferUnfaded[BG_PLTT_ID(7)], 32 * sizeof(u16));
+            // BlendPalettes wrote the tinted result into gPlttBufferFaded, which the
+            // VBlank DMA would transfer to hardware -- causing a one-frame flash of the
+            // half-tinted map at the top of the screen before BeginNormalPaletteFade
+            // (next state) resets faded to black.  Restore faded to black here so the
+            // screen stays dark; gPlttBufferUnfaded already holds the correct tinted
+            // target for the subsequent fade-in.
+            CpuFill16(0, &gPlttBufferFaded[BG_PLTT_ID(7)], 32 * sizeof(u16));
+        }
         break;
     case 9:
         BeginNormalPaletteFade(PALETTES_ALL & ~(0x14), 0, 16, 0, RGB_BLACK);
@@ -1255,8 +1306,17 @@ static void Task_HandlePokedexAreaScreenInput(u8 taskId)
     case 0:
         if (gPaletteFade.active)
             return;
+        // Fade-in just completed — apply day/night tint to OBJ palettes once.
+        // BG 7+8 were pre-tinted before the fade and are already correct.
+        ApplyTimeModeToAreaMapPalette();
         break;
     case 1:
+        // If a multi-frame time-mode refresh is in progress, advance it and wait.
+        if (gTasks[taskId].data[2] != 0)
+        {
+            ContinueTimeModeRefresh(taskId);
+            return;
+        }
         if (JOY_NEW(START_BUTTON))
         {
             // Toggle day/night encounter view.  Play failure sound if the time
@@ -1268,7 +1328,7 @@ static void Task_HandlePokedexAreaScreenInput(u8 taskId)
             }
             sPokedexAreaScreen->areaViewTimeMode ^= 1; // 0 (day) <-> 1 (night)
             PlaySE(SE_DEX_PAGE);
-            RefreshAreaGlowForTimeMode();
+            gTasks[taskId].data[2] = 1; // kick off multi-frame refresh
             return;
         }
         else if (JOY_NEW(B_BUTTON))
@@ -1487,52 +1547,138 @@ static void CreateAreaIndicatorSprites(void)
     }
 }
 
-// Toggles between day and night encounter view without leaving the area screen.
-// Rebuilds all encounter data, re-uploads the glow tilemap, and recreates marker sprites.
-static void RefreshAreaGlowForTimeMode(void)
+// Applies the correct day/night tint to the region-map BG palettes (slots 7+8).
+// Always restores BG 7+8 from ROM (via GetPokedexAreaMapPal) before tinting so
+// the function is idempotent and safe to call regardless of previous tinting.
+static void ApplyTimeModeToAreaMapPalette(void)
+{
+    u8 markerSlot;
+
+    // Always restore BG 7+8 from ROM directly so this function is idempotent
+    // regardless of any previous tinting applied to gPlttBufferUnfaded/Faded.
+    CpuCopy32(GetPokedexAreaMapPal(), &gPlttBufferUnfaded[BG_PLTT_ID(7)], 32 * sizeof(u16));
+    CpuCopy32(GetPokedexAreaMapPal(), &gPlttBufferFaded[BG_PLTT_ID(7)], 32 * sizeof(u16));
+
+    // Restore the area-marker sprite palette from unfaded (always clean) as a base.
+    markerSlot = IndexOfSpritePaletteTag(TAG_AREA_MARKER);
+    if (markerSlot != 0xFF)
+        CpuCopy32(&gPlttBufferUnfaded[OBJ_PLTT_ID(markerSlot)], &gPlttBufferFaded[OBJ_PLTT_ID(markerSlot)], 16 * sizeof(u16));
+
+    if (sPokedexAreaScreen->areaViewTimeMode == 1)
+    {
+        // Blend BG palette slots toward a dark cool blue for night mode.
+        BlendPalettes((1 << 7) | (1 << 8), 8, RGB(2, 4, 10));
+        // Keep unfaded in sync so future fades also target the tinted palette.
+        CpuCopy32(&gPlttBufferFaded[BG_PLTT_ID(7)], &gPlttBufferUnfaded[BG_PLTT_ID(7)], 32 * sizeof(u16));
+    }
+    // Day mode: the cache copies above are already the correct unmodified palettes.
+}
+
+// Advances the multi-frame time-mode toggle refresh one step per frame.
+// Called from Task_HandlePokedexAreaScreenInput while data[2] != 0.
+// Two frames total:
+//   Frame 1 — swap all pre-built caches (encounters + glow tilemap) and DMA.
+//   Frame 2 — rebuild sprites and apply palette tint.
+static void ContinueTimeModeRefresh(u8 taskId)
 {
     u16 i;
 
-    // Re-scan encounter headers for the new time mode and rebuild the glow tilemap.
-    // LoadBgTilemap schedules a direct DMA to VRAM — do NOT call CopyBgTilemapBufferToVram
-    // afterwards, as that would overwrite the fresh write with the stale info-screen buffer.
-    FindMapsWithMon(sPokedexAreaScreen->species);
-    BuildAreaGlowTilemap();
-    LoadBgTilemap(2, sPokedexAreaScreen->areaGlowTilemap, sizeof(sPokedexAreaScreen->areaGlowTilemap), 0);
-
-    // Destroy old marker sprites and recreate them for the new data.
-    FreeSpriteTilesByTag(TAG_AREA_MARKER);
-    FreeSpritePaletteByTag(TAG_AREA_MARKER);
-    for (i = 0; i < sPokedexAreaScreen->numAreaMarkerSprites; i++)
-        DestroySprite(sPokedexAreaScreen->areaMarkerSprites[i]);
-    sPokedexAreaScreen->numAreaMarkerSprites = 0;
-    CreateAreaMarkerSprites();
-
-    // Destroy and recreate "Area Unknown" sprites for the new result set.
-    // The sprites may be NULL (not created on initial load if encounters existed),
-    // so we always rebuild rather than just toggling visibility.
-    // NOTE: Do NOT free the palette here — the indicator sprites share TAG_AREA_UNKNOWN's
-    // palette slot, and freeing it would cause them to flash black for a frame.
-    // The palette is static and unchanged between day/night, so there's no need to reload it.
-    FreeSpriteTilesByTag(TAG_AREA_UNKNOWN);
-    for (i = 0; i < ARRAY_COUNT(sPokedexAreaScreen->areaUnknownSprites); i++)
+    switch (gTasks[taskId].data[2])
     {
-        if (sPokedexAreaScreen->areaUnknownSprites[i])
-            DestroySprite(sPokedexAreaScreen->areaUnknownSprites[i]);
-        sPokedexAreaScreen->areaUnknownSprites[i] = NULL;
-    }
-    LoadAreaUnknownGraphics();
-    CreateAreaUnknownSprites();
+    case 1:
+        // Frame 1: swap the active and alt encounter caches (pre-computed at
+        // initial load — no header re-scan needed), swap the pre-built glow
+        // tilemaps, and DMA the correct one into VRAM.  Zero BLDALPHA first so
+        // the old highlight disappears cleanly.
+        SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(0, 16));
+        {
+            u16 j, tmp16;
+            struct OverworldArea tmpArea;
 
-    // Restart the glow/marker animation and flip the indicator sprite visibility.
-    StartAreaGlow();
-    if (sPokedexAreaScreen->indDaySpriteId != MAX_SPRITES)
-    {
-        bool8 dayInvis   = (sPokedexAreaScreen->areaViewTimeMode != 0);
-        bool8 nightInvis = (sPokedexAreaScreen->areaViewTimeMode == 0);
-        gSprites[sPokedexAreaScreen->indDaySpriteId].invisible       = dayInvis;
-        gSprites[sPokedexAreaScreen->indDaySpriteId + 1].invisible   = dayInvis;
-        gSprites[sPokedexAreaScreen->indNightSpriteId].invisible     = nightInvis;
-        gSprites[sPokedexAreaScreen->indNightSpriteId + 1].invisible = nightInvis;
+            // Swap overworld (route/town) encounter arrays.
+            for (j = 0; j < MAX_AREA_HIGHLIGHTS; j++)
+            {
+                tmpArea = sPokedexAreaScreen->overworldAreasWithMons[j];
+                sPokedexAreaScreen->overworldAreasWithMons[j] = sPokedexAreaScreen->overworldAreasWithMons_alt[j];
+                sPokedexAreaScreen->overworldAreasWithMons_alt[j] = tmpArea;
+            }
+            tmp16 = sPokedexAreaScreen->numOverworldAreas;
+            sPokedexAreaScreen->numOverworldAreas     = sPokedexAreaScreen->numOverworldAreas_alt;
+            sPokedexAreaScreen->numOverworldAreas_alt = tmp16;
+
+            // Swap special-area (dungeon/landmark) marker arrays.
+            for (j = 0; j < MAX_AREA_MARKERS; j++)
+            {
+                tmp16 = sPokedexAreaScreen->specialAreaRegionMapSectionIds[j];
+                sPokedexAreaScreen->specialAreaRegionMapSectionIds[j] = sPokedexAreaScreen->specialAreaRegionMapSectionIds_alt[j];
+                sPokedexAreaScreen->specialAreaRegionMapSectionIds_alt[j] = tmp16;
+            }
+            tmp16 = sPokedexAreaScreen->numSpecialAreas;
+            sPokedexAreaScreen->numSpecialAreas     = sPokedexAreaScreen->numSpecialAreas_alt;
+            sPokedexAreaScreen->numSpecialAreas_alt = tmp16;
+
+            // Swap pre-built glow tilemaps so no rebuild is needed.
+            for (j = 0; j < AREA_SCREEN_WIDTH * AREA_SCREEN_HEIGHT; j++)
+            {
+                tmp16 = sPokedexAreaScreen->areaGlowTilemap[j];
+                sPokedexAreaScreen->areaGlowTilemap[j] = sPokedexAreaScreen->areaGlowTilemap_alt[j];
+                sPokedexAreaScreen->areaGlowTilemap_alt[j] = tmp16;
+            }
+        }
+        // DMA the swapped tilemap into VRAM.  LoadBgTilemap schedules a direct
+        // DMA — do NOT call CopyBgTilemapBufferToVram afterwards.
+        LoadBgTilemap(2, sPokedexAreaScreen->areaGlowTilemap, sizeof(sPokedexAreaScreen->areaGlowTilemap), 0);
+        gTasks[taskId].data[2] = 2;
+        break;
+    case 2:
+        // Frame 2: destroy and recreate marker sprites and Area Unknown sprites.
+        FreeSpriteTilesByTag(TAG_AREA_MARKER);
+        FreeSpritePaletteByTag(TAG_AREA_MARKER);
+        for (i = 0; i < sPokedexAreaScreen->numAreaMarkerSprites; i++)
+            DestroySprite(sPokedexAreaScreen->areaMarkerSprites[i]);
+        sPokedexAreaScreen->numAreaMarkerSprites = 0;
+        CreateAreaMarkerSprites();
+
+        // Area Unknown sprites: the decompressed graphics in areaUnknownGraphicsBuffer
+        // never change between modes, so skip LZ77UnCompWram and just re-upload
+        // the existing buffer to OBJ VRAM via LoadSpriteSheet.
+        // NOTE: do NOT free TAG_AREA_UNKNOWN's palette — indicator sprites share it.
+        FreeSpriteTilesByTag(TAG_AREA_UNKNOWN);
+        for (i = 0; i < ARRAY_COUNT(sPokedexAreaScreen->areaUnknownSprites); i++)
+        {
+            if (sPokedexAreaScreen->areaUnknownSprites[i])
+                DestroySprite(sPokedexAreaScreen->areaUnknownSprites[i]);
+            sPokedexAreaScreen->areaUnknownSprites[i] = NULL;
+        }
+        {
+            struct SpriteSheet spriteSheet = {
+                .data = sPokedexAreaScreen->areaUnknownGraphicsBuffer,
+                .size = sizeof(sPokedexAreaScreen->areaUnknownGraphicsBuffer),
+                .tag  = TAG_AREA_UNKNOWN,
+            };
+            LoadSpriteSheet(&spriteSheet);
+            // Palette is shared with the indicator sprites and is already loaded;
+            // LoadSpritePalette is a no-op if the tag is already registered, but
+            // call it anyway to be safe in case it was evicted.
+            LoadSpritePalette(&sAreaUnknownSpritePalette);
+        }
+        CreateAreaUnknownSprites();
+        gTasks[taskId].data[2] = 3;
+        break;
+    case 3:
+        // Frame 3: restart glow animation, flip indicator sprites, apply palette tint.
+        StartAreaGlow();
+        if (sPokedexAreaScreen->indDaySpriteId != MAX_SPRITES)
+        {
+            bool8 dayInvis   = (sPokedexAreaScreen->areaViewTimeMode != 0);
+            bool8 nightInvis = (sPokedexAreaScreen->areaViewTimeMode == 0);
+            gSprites[sPokedexAreaScreen->indDaySpriteId].invisible       = dayInvis;
+            gSprites[sPokedexAreaScreen->indDaySpriteId + 1].invisible   = dayInvis;
+            gSprites[sPokedexAreaScreen->indNightSpriteId].invisible     = nightInvis;
+            gSprites[sPokedexAreaScreen->indNightSpriteId + 1].invisible = nightInvis;
+        }
+        ApplyTimeModeToAreaMapPalette();
+        gTasks[taskId].data[2] = 0; // refresh complete
+        break;
     }
 }
